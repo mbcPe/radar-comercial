@@ -60,7 +60,7 @@ const ESTADOS = {
   rezagado: { label: 'Rezagado', bg: '#FCEBEB', text: '#791F1F', emoji: '🔴' },
   proximo: { label: 'Próximo', bg: '#FAEEDA', text: '#633806', emoji: '🟡' },
   aldia: { label: 'Al día', bg: '#EAF3DE', text: '#27500A', emoji: '🟢' },
-  pausa: { label: 'En pausa', bg: '#E6F1FB', text: '#0C447C', emoji: '🔵' },
+  pausa: { label: 'En pausa', bg: '#E6F1FB', text: '#0C447C', emoji: '🔵' }, 
 };
 
 function formatearDias(fecha: string | null): string {
