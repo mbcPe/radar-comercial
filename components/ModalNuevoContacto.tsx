@@ -33,6 +33,7 @@ export default function ModalNuevoContacto({ managerId, onClose, onSaved }: Prop
     email: '',
     telefono: '',
     cumple: '',
+    pais: '',
     prioridad: 'P2',
     next_touch: fechaSugerida,
     oportunidad: '',
@@ -60,6 +61,7 @@ export default function ModalNuevoContacto({ managerId, onClose, onSaved }: Prop
       email: form.email || null,
       telefono: form.telefono || null,
       cumple: form.cumple || null,
+      pais: form.pais || null,
       prioridad: form.prioridad,
       next_touch: form.next_touch,
       oportunidad: form.oportunidad || null,
@@ -206,7 +208,42 @@ export default function ModalNuevoContacto({ managerId, onClose, onSaved }: Prop
                 className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 focus:outline-none focus:ring-2"
               />
             </div>
-
+           
+            <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              País
+            </label>
+            <select
+              value={form.pais}
+              onChange={(e) => setForm({ ...form, pais: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#9C0C54] focus:border-transparent"
+            >
+              <option value="">Seleccionar país</option>
+              <option value="Argentina">Argentina</option>
+              <option value="Bolivia">Bolivia</option>
+              <option value="Brasil">Brasil</option>
+              <option value="Chile">Chile</option>
+              <option value="Colombia">Colombia</option>
+              <option value="Costa Rica">Costa Rica</option>
+              <option value="Ecuador">Ecuador</option>
+              <option value="El Salvador">El Salvador</option>
+              <option value="España">España</option>
+              <option value="Estados Unidos">Estados Unidos</option>
+              <option value="Guatemala">Guatemala</option>
+              <option value="Honduras">Honduras</option>
+              <option value="México">México</option>
+              <option value="Nicaragua">Nicaragua</option>
+              <option value="Panamá">Panamá</option>
+              <option value="Paraguay">Paraguay</option>
+              <option value="Perú">Perú</option>
+              <option value="Portugal">Portugal</option>
+              <option value="Puerto Rico">Puerto Rico</option>
+              <option value="República Dominicana">República Dominicana</option>
+              <option value="Uruguay">Uruguay</option>
+              <option value="Venezuela">Venezuela</option>
+              <option value="Otro">Otro</option>
+            </select>
+          </div>
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">
                 Próximo contacto *
