@@ -37,55 +37,57 @@ export default function ModalImportarContactos({ onClose, onSuccess }: Props) {
   const [importando, setImportando] = useState(false);
   const [paso, setPaso] = useState<'upload' | 'preview' | 'done'>('upload');
 
-  function descargarPlantilla() {
-    // Crear workbook y worksheet
-    const headers = [
-      'nombre',
-      'pais',
-      'empresa',
-      'area',
-      'cargo',
-      'email',
-      'telefono',
-      'cumple',
-      'prioridad',
-      'last_touch',
-      'next_touch',
-      'estado',
-      'pausa_hasta',
-      'pausa_motivo',
-      'oportunidad',
-      'notas',
-      'manager_email',
-    ];
+ function descargarPlantilla() {
+  const headers = [
+    'nombre',
+    'pais',
+    'empresa',
+    'area',
+    'cargo',
+    'email',
+    'telefono',
+    'cumple',
+    'prioridad',
+    'last_touch',
+    'next_touch',
+    'estado',
+    'pausa_hasta',
+    'pausa_motivo',
+    'oportunidad',
+    'notas',
+    'manager_email',
+  ];
 
-    const ejemplo = [
-      'Silvana Manrique',
-      'Perú',
-      'Visa',
-      'Visa Direct',
-      'Director de Estrategia',
-      '',
-      '+51 985985538',
-      '',
-      'P2',
-      '2025-05-08',
-      '2025-05-15',
-      'activo',
-      '',
-      '',
-      '',
-      '',
-      'prwong@minsait.com',
-    ];
+  const instrucciones = [
+    'Nombre y apellido del contacto',
+    'Pais del contacto',
+    'Empresa del contacto',
+    'Area del contacto',
+    'Cargo del contacto',
+    'Mail del contacto',
+    'Telelfono del contacto',
+    'Cumpleaños, formato: DD/MM/YYYY',
+    'P1 / P2 / P3 (P1 es 30 dias, P2 es 60 dias y P3 es 75 dias)',
+    'Ultimo contacto. Formato: YYYY-MM-DD',
+    'DEJAR EN BLANCO',
+    'activo / pausa / inactivo (TODO en minusculas)',
+    'Hasta cuando esta en pausa el contacto. Formato: YYYY-MM-DD',
+    'Texto libre',
+    'Texto libre',
+    'Texto libre',
+    'Mail del manager owner',
+  ];
 
-    const ws = XLSX.utils.aoa_to_sheet([headers, ejemplo]);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Contactos');
-    
-    // Descargar como Excel
-    XLSX.writeFile(wb, 'plantilla_contactos.xlsx');
-  }
+  const ws = XLSX.utils.aoa_to_sheet([headers, instrucciones]);
+  
+  // Congelar la primera fila (headers)
+  ws['!freeze'] = { xSplit: 0, ySplit: 1 };
+  
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Contactos');
+  
+  XLSX.writeFile(wb, 'plantilla_contactos.xlsx');
+}
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
