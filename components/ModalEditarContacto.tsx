@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase';
+import { explicarError } from '@/lib/lenguaje';
 
 interface ModalEditarContactoProps {
   isOpen: boolean;
@@ -19,6 +20,9 @@ export default function ModalEditarContacto({
   const supabase = createClient();
   const [loading, setLoading] = useState(false);
   const [cargando, setCargando] = useState(true);
+  /** Si no se pudo leer el contacto, se bloquea guardar: escribir el formulario
+   *  vacío encima del registro real borraría los datos originales. */
+  const [errorCarga, setErrorCarga] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     nombre: '',
@@ -40,6 +44,7 @@ export default function ModalEditarContacto({
       if (!isOpen || !contacto?.id) return;
       
       setCargando(true);
+      setErrorCarga(null);
       
       const { data, error } = await supabase
         .from('contactos')
@@ -47,7 +52,14 @@ export default function ModalEditarContacto({
         .eq('id', contacto.id)
         .single();
 
-      if (data && !error) {
+      if (error || !data) {
+        const legible = explicarError(error, 'cargar el contacto');
+        setErrorCarga(`${legible.titulo} ${legible.sugerencia}`);
+        setCargando(false);
+        return;
+      }
+
+      {
         setForm({
           nombre: data.nombre || '',
           empresa: data.empresa || '',

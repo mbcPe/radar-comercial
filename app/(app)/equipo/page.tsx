@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase';
+import RespaldoDatos from '@/components/RespaldoDatos';
 import { MODO_DEMO } from '@/lib/modoDemo';
 import { CONTACTOS, MANAGERS_LISTA, PROYECTOS, USUARIO_DEMO } from '@/lib/demoData';
 
@@ -195,6 +196,10 @@ export default function EquipoPage() {
     <div className="p-6">
       <h2 className="text-lg font-medium text-mbc mb-1">Equipo</h2>
       <p className="text-sm text-tinta mb-6">Performance del equipo comercial</p>
+
+      <div className="mb-6">
+        <RespaldoDatos />
+      </div>
 
       {/* Métricas globales */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
