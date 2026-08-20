@@ -4,6 +4,9 @@ import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
 import { useScope } from '@/lib/viewScope';
+import { cx, LogoMBC } from '@/components/ui/kit';
+import { MODO_DEMO } from '@/lib/modoDemo';
+import { CONTACTOS, USUARIO_DEMO } from '@/lib/demoData';
 
 type Manager = {
   id: string;
@@ -23,13 +26,13 @@ type NavItem = {
 
 const NAV_ITEMS: NavItem[] = [
   {
-    id: 'radar',
-    label: 'Radar Comercial',
+    id: 'agenda',
+    label: 'Esta semana',
     href: '/',
     icon: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
-        <circle cx="8" cy="8" r="6" /><circle cx="8" cy="8" r="2" />
-        <path d="M8 2v2M8 12v2M2 8h2M12 8h2" />
+        <rect x="2" y="3" width="12" height="11" rx="1.5" />
+        <path d="M2 6.5h12M5.5 1.5v3M10.5 1.5v3M5.8 10l1.6 1.6 3-3" />
       </svg>
     ),
   },
@@ -55,6 +58,18 @@ const NAV_ITEMS: NavItem[] = [
     ),
   },
   {
+    id: 'linea-tiempo',
+    label: 'Línea de tiempo',
+    href: '/linea-tiempo',
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <path d="M3 2v12" />
+        <circle cx="7" cy="4.5" r="1.6" /><circle cx="10" cy="8" r="1.6" /><circle cx="7" cy="11.5" r="1.6" />
+        <path d="M3 4.5h2.4M3 8h5M3 11.5h2.4" />
+      </svg>
+    ),
+  },
+  {
     id: 'proyectos',
     label: 'Proyectos',
     href: '/proyectos',
@@ -62,6 +77,17 @@ const NAV_ITEMS: NavItem[] = [
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
         <path d="M2 5l6-3 6 3v6l-6 3-6-3z" />
         <path d="M2 5l6 3 6-3M8 8v6" />
+      </svg>
+    ),
+  },
+  {
+    id: 'plantillas',
+    label: 'Buenas prácticas',
+    href: '/plantillas',
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <path d="M3 2h7l3 3v9H3z" />
+        <path d="M5.5 7h5M5.5 10h3" />
       </svg>
     ),
   },
@@ -76,6 +102,19 @@ const NAV_ITEMS: NavItem[] = [
       </svg>
     ),
   },
+  // El dashboard va al final: informa, pero no es por donde se empieza el día
+  {
+    id: 'dashboard',
+    label: 'Dashboard',
+    href: '/dashboard',
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <path d="M2 14h12" />
+        <rect x="3" y="8" width="2.6" height="5" /><rect x="6.7" y="5" width="2.6" height="8" />
+        <rect x="10.4" y="2.5" width="2.6" height="10.5" />
+      </svg>
+    ),
+  },
 ];
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
@@ -84,11 +123,37 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const supabase = createClient();
   const { scope, setScope } = useScope();
   const [user, setUser] = useState<Manager | null>(null);
-  const [sidebarColapsada, setSidebarColapsada] = useState(false);
+  // En móvil el menú arranca cerrado: 208px de sidebar dejan la pantalla inservible
+  const [sidebarColapsada, setSidebarColapsada] = useState(
+    () => typeof window !== 'undefined' && window.innerWidth < 768
+  );
   const [loading, setLoading] = useState(true);
+  /** Contactos propios vencidos o que vencen esta semana. */
+  const [pendientes, setPendientes] = useState(0);
+  const [avisoVisible, setAvisoVisible] = useState(true);
 
   useEffect(() => {
     async function loadUser() {
+      // Modo demo: sin login, con la cartera ficticia
+      if (MODO_DEMO) {
+        setUser({ ...USUARIO_DEMO });
+        const finSemana = new Date();
+        finSemana.setDate(
+          finSemana.getDate() + (7 - (finSemana.getDay() === 0 ? 7 : finSemana.getDay()))
+        );
+        setPendientes(
+          CONTACTOS.filter(
+            (c) =>
+              c.manager_id === USUARIO_DEMO.id &&
+              c.estado !== 'pausa' &&
+              c.next_touch !== null &&
+              new Date(c.next_touch) <= finSemana
+          ).length
+        );
+        setLoading(false);
+        return;
+      }
+
       const { data: { user: authUser } } = await supabase.auth.getUser();
       if (!authUser) {
         router.push('/login');
@@ -109,6 +174,19 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       }
 
       setUser(managerData);
+
+      // Alerta de cadencia: lo vencido más lo que vence hasta el domingo
+      const hoy = new Date();
+      const finSemana = new Date(hoy);
+      finSemana.setDate(hoy.getDate() + (7 - (hoy.getDay() === 0 ? 7 : hoy.getDay())));
+      const { count } = await supabase
+        .from('contactos')
+        .select('id', { count: 'exact', head: true })
+        .eq('manager_id', managerData.id)
+        .neq('estado', 'pausa')
+        .lte('next_touch', finSemana.toISOString().slice(0, 10));
+      setPendientes(count ?? 0);
+
       setLoading(false);
     }
     loadUser();
@@ -127,98 +205,148 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-gray-700 text-sm">Cargando...</div>
+      <div className="min-h-screen flex items-center justify-center bg-ceramica">
+        <div className="flex items-center gap-2 text-sm text-mbc/70">
+          <span className="h-2 w-2 animate-pulse rounded-full bg-acento" />
+          Cargando…
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Topbar */}
-      <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between sticky top-0 z-40">
-        <div className="flex items-center gap-3">
+    <div className="flex min-h-screen min-h-[100dvh] flex-col bg-ceramica">
+      {/* Topbar Pruno: la barra de marca de los decks */}
+      <header className="bg-mbc px-4 py-2.5 flex items-center justify-between sticky top-0 z-40">
+        <div className="flex items-center gap-3 min-w-0">
           <button
             onClick={() => setSidebarColapsada(!sidebarColapsada)}
-            className="w-8 h-8 flex items-center justify-center rounded-md hover:bg-gray-100 text-gray-700"
+            className="w-8 h-8 flex items-center justify-center rounded-md text-white/80 hover:bg-white/10 hover:text-white transition-colors"
             title="Mostrar/ocultar menú"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M3 6h18M3 12h18M3 18h18" />
             </svg>
           </button>
-          <h1 className="text-base font-medium" style={{ color: '#9C0C54' }}>
-            MINSAIT BUSINESS CONSULTING
-          </h1>
+          <div className="flex items-center gap-2.5 min-w-0">
+            <LogoMBC invertido />
+            <span className="text-sm font-semibold tracking-tight text-white truncate">
+              Radar Comercial
+            </span>
+            <span className="hidden md:inline text-[10px] font-semibold uppercase tracking-[0.14em] text-white/50">
+              Minsait Business Consulting
+            </span>
+            {MODO_DEMO && (
+              <span className="notch-sm bg-naranja px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
+                Demo
+              </span>
+            )}
+          </div>
         </div>
 
-        <div className="flex items-center gap-3 text-sm text-gray-800">
-          {/* Toggle Vista propia / Vista total */}
-          <div className="inline-flex border border-gray-300 rounded-md overflow-hidden">
-            <button
-              onClick={() => setScope('propia')}
-              className="px-3 py-1 text-xs font-medium transition-colors"
-              style={{
-                backgroundColor: scope === 'propia' ? '#9C0C54' : 'white',
-                color: scope === 'propia' ? 'white' : '#374151',
-              }}
-            >
-              Vista propia
-            </button>
-            <button
-              onClick={() => setScope('total')}
-              className="px-3 py-1 text-xs font-medium transition-colors"
-              style={{
-                backgroundColor: scope === 'total' ? '#9C0C54' : 'white',
-                color: scope === 'total' ? 'white' : '#374151',
-              }}
-            >
-              Vista total
-            </button>
+        <div className="flex items-center gap-3 text-sm">
+          {/* Alcance de la vista: mi cartera vs. la del equipo */}
+          <div className="inline-flex rounded-lg bg-white/10 p-0.5">
+            {(['propia', 'total'] as const).map((s) => (
+              <button
+                key={s}
+                onClick={() => setScope(s)}
+                className="rounded-md px-3 py-1 text-xs font-semibold transition-colors"
+                style={{
+                  backgroundColor: scope === s ? '#1F6FEB' : 'transparent',
+                  color: scope === s ? '#fff' : 'rgba(255,255,255,.7)',
+                }}
+              >
+                {s === 'propia' ? 'Mi cartera' : 'Equipo'}
+              </button>
+            ))}
           </div>
 
-          <div
-            className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium text-white"
-            style={{ backgroundColor: '#9C0C54' }}
-          >
-            {user?.iniciales}
+          <div className="flex items-center gap-2">
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-acento text-xs font-semibold text-white">
+              {user?.iniciales}
+            </span>
+            <span className="hidden sm:inline text-xs font-medium text-white">{user?.nombre}</span>
           </div>
-          <span className="font-medium hidden sm:inline">{user?.nombre}</span>
-          <button onClick={handleLogout} className="text-gray-700 hover:text-gray-900 text-xs ml-2 underline">
+          <button
+            onClick={handleLogout}
+            className="text-xs text-white/60 hover:text-white transition-colors"
+            title="Cerrar sesión"
+          >
             Salir
           </button>
         </div>
       </header>
 
+      {/* Aviso de cadencia al entrar */}
+      {pendientes > 0 && avisoVisible && (
+        <div className="flex flex-wrap items-center justify-center gap-3 bg-acento px-4 py-2 text-center text-xs text-white">
+          <span>
+            Tienes <span className="font-bold">{pendientes}</span>{' '}
+            {pendientes === 1 ? 'contacto que tocar' : 'contactos que tocar'} esta semana
+          </span>
+          <button
+            onClick={() => router.push('/')}
+            className="rounded-full bg-white/20 px-3 py-1 font-semibold hover:bg-white/30"
+          >
+            Ver la agenda
+          </button>
+          <button
+            onClick={() => setAvisoVisible(false)}
+            className="text-white/70 hover:text-white"
+            aria-label="Cerrar aviso"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* Layout: sidebar + contenido */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="relative flex flex-1 md:overflow-hidden">
+        {/* Velo para cerrar el menú en móvil */}
+        {!sidebarColapsada && (
+          <button
+            onClick={() => setSidebarColapsada(true)}
+            className="fixed inset-0 z-40 bg-black/40 md:hidden"
+            aria-label="Cerrar menú"
+          />
+        )}
         {/* Sidebar */}
         <aside
-          className="bg-white border-r border-gray-200 transition-all duration-200 overflow-hidden flex-shrink-0"
-          style={{ width: sidebarColapsada ? '0px' : '200px' }}
+          className="bg-mbc-900 transition-all duration-200 overflow-hidden flex-shrink-0 fixed bottom-0 left-0 top-[52px] z-50 md:static md:top-auto md:z-auto"
+          style={{ width: sidebarColapsada ? '0px' : '208px' }}
         >
-          <nav className="p-3 space-y-0.5">
+          <nav className="p-3 space-y-1">
             {NAV_ITEMS.map((item) => {
               const activo = isActive(item.href);
               return (
                 <button
                   key={item.id}
-                  onClick={() => router.push(item.href)}
-                  className="w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors"
-                  style={{
-                    backgroundColor: activo ? '#FBEAF0' : 'transparent',
-                    color: activo ? '#9C0C54' : '#374151',
-                    fontWeight: activo ? 500 : 400,
+                  onClick={() => {
+                    router.push(item.href);
+                    // En móvil el menú se cierra al navegar
+                    if (window.innerWidth < 768) setSidebarColapsada(true);
                   }}
-                  onMouseEnter={(e) => {
-                    if (!activo) e.currentTarget.style.backgroundColor = '#F3F4F6';
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!activo) e.currentTarget.style.backgroundColor = 'transparent';
-                  }}
+                  className={cx(
+                    'group relative w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors',
+                    activo
+                      ? 'bg-white/10 font-semibold text-white'
+                      : 'font-medium text-white/60 hover:bg-white/5 hover:text-white'
+                  )}
                 >
+                  {/* marcador acento del ítem activo */}
+                  <span
+                    className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full transition-opacity"
+                    style={{ backgroundColor: '#1F6FEB', opacity: activo ? 1 : 0 }}
+                  />
                   {item.icon}
                   <span className="whitespace-nowrap">{item.label}</span>
+                  {/* Alerta de cadencia sobre el Radar */}
+                  {item.id === 'agenda' && pendientes > 0 && (
+                    <span className="ml-auto rounded-full bg-acento px-2 py-0.5 text-[10px] font-bold text-white">
+                      {pendientes}
+                    </span>
+                  )}
                 </button>
               );
             })}
@@ -226,7 +354,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </aside>
 
         {/* Contenido principal */}
-        <main className="flex-1 overflow-y-auto">
+        <main className="min-w-0 flex-1 md:overflow-y-auto">
           {children}
         </main>
       </div>

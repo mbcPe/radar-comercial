@@ -27,6 +27,7 @@ export default function ModalEditarContacto({
     cargo: '',
     email: '',
     telefono: '',
+    cumple: '',
     pais: '',
     prioridad: 'P2',
     oportunidad: '',
@@ -42,7 +43,7 @@ export default function ModalEditarContacto({
       
       const { data, error } = await supabase
         .from('contactos')
-        .select('nombre, empresa, area, cargo, email, telefono, pais, prioridad, oportunidad, notas')
+        .select('nombre, empresa, area, cargo, email, telefono, cumple, pais, prioridad, oportunidad, notas')
         .eq('id', contacto.id)
         .single();
 
@@ -54,6 +55,7 @@ export default function ModalEditarContacto({
           cargo: data.cargo || '',
           email: data.email || '',
           telefono: data.telefono || '',
+          cumple: data.cumple || '',
           pais: data.pais || '',
           prioridad: data.prioridad || 'P2',
           oportunidad: data.oportunidad || '',
@@ -83,6 +85,7 @@ export default function ModalEditarContacto({
           cargo: form.cargo || null,
           email: form.email || null,
           telefono: form.telefono || null,
+          cumple: form.cumple || null,
           pais: form.pais || null,
           prioridad: form.prioridad,
           oportunidad: form.oportunidad || null,
@@ -104,25 +107,25 @@ export default function ModalEditarContacto({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">
-          <h2 className="text-xl font-semibold text-gray-900">Editar contacto</h2>
+        <div className="sticky top-0 bg-white border-b border-ceramica-300 px-6 py-4 flex justify-between items-center">
+          <h2 className="text-xl font-semibold text-mbc">Editar contacto</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
+            className="text-gray-400 hover:text-arena text-2xl leading-none"
           >
             ×
           </button>
         </div>
 
         {cargando ? (
-          <div className="p-6 text-center text-gray-700">Cargando datos...</div>
+          <div className="p-6 text-center text-tinta">Cargando datos...</div>
         ) : (
           <form onSubmit={handleSubmit} className="p-6 space-y-4">
             {/* Fila 1: Nombre */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-tinta mb-1">
                 Nombre completo *
               </label>
               <input
@@ -130,14 +133,14 @@ export default function ModalEditarContacto({
                 required
                 value={form.nombre}
                 onChange={(e) => setForm({ ...form, nombre: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 focus:ring-2 focus:ring-[#9C0C54] focus:border-transparent"
+                className="w-full px-3 py-2 border border-ceramica-300 rounded-md text-mbc focus:ring-2 focus:ring-[#0A3A6B] focus:border-transparent"
               />
             </div>
 
             {/* Fila 2: Empresa y País */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-tinta mb-1">
                   Empresa *
                 </label>
                 <input
@@ -145,18 +148,18 @@ export default function ModalEditarContacto({
                   required
                   value={form.empresa}
                   onChange={(e) => setForm({ ...form, empresa: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 focus:ring-2 focus:ring-[#9C0C54] focus:border-transparent"
+                  className="w-full px-3 py-2 border border-ceramica-300 rounded-md text-mbc focus:ring-2 focus:ring-[#0A3A6B] focus:border-transparent"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-tinta mb-1">
                   País
                 </label>
                 <select
                   value={form.pais}
                   onChange={(e) => setForm({ ...form, pais: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 focus:ring-2 focus:ring-[#9C0C54] focus:border-transparent"
+                  className="w-full px-3 py-2 border border-ceramica-300 rounded-md text-mbc focus:ring-2 focus:ring-[#0A3A6B] focus:border-transparent"
                 >
                   <option value="">Seleccionar país</option>
                   <option value="Argentina">Argentina</option>
@@ -189,26 +192,26 @@ export default function ModalEditarContacto({
             {/* Fila 3: Área y Cargo */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-tinta mb-1">
                   Área
                 </label>
                 <input
                   type="text"
                   value={form.area}
                   onChange={(e) => setForm({ ...form, area: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 focus:ring-2 focus:ring-[#9C0C54] focus:border-transparent"
+                  className="w-full px-3 py-2 border border-ceramica-300 rounded-md text-mbc focus:ring-2 focus:ring-[#0A3A6B] focus:border-transparent"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-tinta mb-1">
                   Cargo
                 </label>
                 <input
                   type="text"
                   value={form.cargo}
                   onChange={(e) => setForm({ ...form, cargo: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 focus:ring-2 focus:ring-[#9C0C54] focus:border-transparent"
+                  className="w-full px-3 py-2 border border-ceramica-300 rounded-md text-mbc focus:ring-2 focus:ring-[#0A3A6B] focus:border-transparent"
                 />
               </div>
             </div>
@@ -216,40 +219,56 @@ export default function ModalEditarContacto({
             {/* Fila 4: Email y Teléfono */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-tinta mb-1">
                   Email
                 </label>
                 <input
                   type="email"
                   value={form.email}
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 focus:ring-2 focus:ring-[#9C0C54] focus:border-transparent"
+                  className="w-full px-3 py-2 border border-ceramica-300 rounded-md text-mbc focus:ring-2 focus:ring-[#0A3A6B] focus:border-transparent"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-tinta mb-1">
                   Teléfono
                 </label>
                 <input
                   type="tel"
                   value={form.telefono}
                   onChange={(e) => setForm({ ...form, telefono: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 focus:ring-2 focus:ring-[#9C0C54] focus:border-transparent"
+                  className="w-full px-3 py-2 border border-ceramica-300 rounded-md text-mbc focus:ring-2 focus:ring-[#0A3A6B] focus:border-transparent"
                 />
               </div>
             </div>
 
+            {/* Cumpleaños: alimenta el recordatorio del radar */}
+            <div>
+              <label className="block text-sm font-medium text-tinta mb-1">
+                Cumpleaños
+              </label>
+              <input
+                type="date"
+                value={form.cumple}
+                onChange={(e) => setForm({ ...form, cumple: e.target.value })}
+                className="w-full px-3 py-2 border border-ceramica-300 rounded-md text-mbc focus:ring-2 focus:ring-[#0A3A6B] focus:border-transparent"
+              />
+              <p className="mt-1 text-xs text-arena">
+                Aparece en el radar cuando falten 30 días o menos.
+              </p>
+            </div>
+
             {/* Fila 5: Prioridad */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-tinta mb-1">
                 Prioridad *
               </label>
               <select
                 required
                 value={form.prioridad}
                 onChange={(e) => setForm({ ...form, prioridad: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 focus:ring-2 focus:ring-[#9C0C54] focus:border-transparent"
+                className="w-full px-3 py-2 border border-ceramica-300 rounded-md text-mbc focus:ring-2 focus:ring-[#0A3A6B] focus:border-transparent"
               >
                 <option value="P1">P1 · Contacto cada 30 días</option>
                 <option value="P2">P2 · Contacto cada 60 días</option>
@@ -259,36 +278,36 @@ export default function ModalEditarContacto({
 
             {/* Fila 6: Oportunidad */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-tinta mb-1">
                 Oportunidad en evaluación
               </label>
               <input
                 type="text"
                 value={form.oportunidad}
                 onChange={(e) => setForm({ ...form, oportunidad: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 focus:ring-2 focus:ring-[#9C0C54] focus:border-transparent"
+                className="w-full px-3 py-2 border border-ceramica-300 rounded-md text-mbc focus:ring-2 focus:ring-[#0A3A6B] focus:border-transparent"
               />
             </div>
 
             {/* Fila 7: Notas */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-tinta mb-1">
                 Notas personales
               </label>
               <textarea
                 value={form.notas}
                 onChange={(e) => setForm({ ...form, notas: e.target.value })}
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 focus:ring-2 focus:ring-[#9C0C54] focus:border-transparent resize-none"
+                className="w-full px-3 py-2 border border-ceramica-300 rounded-md text-mbc focus:ring-2 focus:ring-[#0A3A6B] focus:border-transparent resize-none"
               />
             </div>
 
             {/* Botones */}
-            <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+            <div className="flex justify-end gap-3 pt-4 border-t border-ceramica-300">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                className="px-4 py-2 text-sm font-medium text-tinta bg-white border border-ceramica-300 rounded-md hover:bg-ceramica"
                 disabled={loading}
               >
                 Cancelar
@@ -296,7 +315,7 @@ export default function ModalEditarContacto({
               <button
                 type="submit"
                 disabled={loading}
-                className="px-4 py-2 text-sm font-medium text-white bg-[#9C0C54] rounded-md hover:bg-[#7A0942] disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 text-sm font-medium text-white bg-[#0A3A6B] rounded-md hover:bg-[#7A0942] disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? 'Guardando...' : 'Guardar cambios'}
               </button>

@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
 import { useScope } from '@/lib/viewScope';
+import { MODO_DEMO } from '@/lib/modoDemo';
+import { ACTIVIDADES, CONTACTOS, MANAGERS_LISTA, USUARIO_DEMO } from '@/lib/demoData';
 
 type Actividad = {
   id: string;
@@ -74,6 +76,30 @@ export default function ActividadesPage() {
 
   useEffect(() => {
     async function loadData() {
+      if (MODO_DEMO) {
+        const propios =
+          scope === 'propia'
+            ? CONTACTOS.filter((c) => c.manager_id === USUARIO_DEMO.id)
+            : CONTACTOS;
+        setManagerId(USUARIO_DEMO.id);
+        setContactos(Object.fromEntries(propios.map((c) => [c.id, c])));
+        const ids = new Set(propios.map((c) => c.id));
+        setActividades(
+          ACTIVIDADES.filter((a) => ids.has(a.contacto_id)).map((a) => ({
+            id: a.id,
+            contacto_id: a.contacto_id,
+            tipo: a.tipo,
+            resultado: a.resultado ?? null,
+            proximos_pasos: a.proximos_pasos ?? null,
+            fecha: a.fecha,
+            autor_id: a.autor_id,
+          }))
+        );
+        setAutores(Object.fromEntries(MANAGERS_LISTA.map((m) => [m.id, m])));
+        setLoading(false);
+        return;
+      }
+
       const { data: { user: authUser } } = await supabase.auth.getUser();
       if (!authUser) return;
 
@@ -140,7 +166,7 @@ export default function ActividadesPage() {
   }, [supabase, scope]);
 
   if (loading) {
-    return <div className="p-6 text-gray-700 text-sm">Cargando actividades...</div>;
+    return <div className="p-6 text-tinta text-sm">Cargando actividades...</div>;
   }
 
   // Aplicar filtros
@@ -177,41 +203,41 @@ export default function ActividadesPage() {
 
   return (
     <div className="p-6">
-      <h2 className="text-lg font-medium text-gray-900 mb-1">Actividades</h2>
-      <p className="text-sm text-gray-700 mb-6">
+      <h2 className="text-lg font-medium text-mbc mb-1">Actividades</h2>
+      <p className="text-sm text-tinta mb-6">
         {scope === 'propia' ? 'Tu historial de interacciones' : 'Historial del equipo completo'}
       </p>
 
       {/* Métricas */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-        <div className="bg-gray-50 border border-gray-200 rounded-md p-3">
-          <div className="text-[10px] font-medium text-gray-700 uppercase tracking-wide mb-1">Total</div>
-          <div className="text-2xl font-medium text-gray-900">{actividades.length}</div>
-          <div className="text-xs text-gray-600 mt-0.5">histórico</div>
+        <div className="bg-ceramica border border-ceramica-300 rounded-md p-3">
+          <div className="text-[10px] font-medium text-tinta uppercase tracking-wide mb-1">Total</div>
+          <div className="text-2xl font-medium text-mbc">{actividades.length}</div>
+          <div className="text-xs text-arena mt-0.5">histórico</div>
         </div>
-        <div className="bg-gray-50 border border-gray-200 rounded-md p-3">
-          <div className="text-[10px] font-medium text-gray-700 uppercase tracking-wide mb-1">Este mes</div>
-          <div className="text-2xl font-medium text-gray-900">{actsMes}</div>
-          <div className="text-xs text-gray-600 mt-0.5">acciones</div>
+        <div className="bg-ceramica border border-ceramica-300 rounded-md p-3">
+          <div className="text-[10px] font-medium text-tinta uppercase tracking-wide mb-1">Este mes</div>
+          <div className="text-2xl font-medium text-mbc">{actsMes}</div>
+          <div className="text-xs text-arena mt-0.5">acciones</div>
         </div>
-        <div className="bg-gray-50 border border-gray-200 rounded-md p-3">
-          <div className="text-[10px] font-medium text-gray-700 uppercase tracking-wide mb-1">Esta semana</div>
-          <div className="text-2xl font-medium text-gray-900">{actsSemana}</div>
-          <div className="text-xs text-gray-600 mt-0.5">acciones</div>
+        <div className="bg-ceramica border border-ceramica-300 rounded-md p-3">
+          <div className="text-[10px] font-medium text-tinta uppercase tracking-wide mb-1">Esta semana</div>
+          <div className="text-2xl font-medium text-mbc">{actsSemana}</div>
+          <div className="text-xs text-arena mt-0.5">acciones</div>
         </div>
-        <div className="bg-gray-50 border border-gray-200 rounded-md p-3">
-          <div className="text-[10px] font-medium text-gray-700 uppercase tracking-wide mb-1">Hoy</div>
-          <div className="text-2xl font-medium" style={{ color: '#9C0C54' }}>{actsHoy}</div>
-          <div className="text-xs text-gray-600 mt-0.5">{actsHoy === 1 ? 'acción' : 'acciones'}</div>
+        <div className="bg-ceramica border border-ceramica-300 rounded-md p-3">
+          <div className="text-[10px] font-medium text-tinta uppercase tracking-wide mb-1">Hoy</div>
+          <div className="text-2xl font-medium" style={{ color: '#0A3A6B' }}>{actsHoy}</div>
+          <div className="text-xs text-arena mt-0.5">{actsHoy === 1 ? 'acción' : 'acciones'}</div>
         </div>
       </div>
 
       {/* Filtros */}
-      <div className="bg-white border border-gray-200 rounded-xl p-3 mb-4 flex flex-wrap items-center gap-2">
+      <div className="bg-white border border-ceramica-300 rounded-xl p-3 mb-4 flex flex-wrap items-center gap-2">
         <select
           value={filtroTipo}
           onChange={(e) => setFiltroTipo(e.target.value)}
-          className="px-3 py-1.5 border border-gray-300 rounded-md text-sm text-gray-900 bg-white cursor-pointer"
+          className="px-3 py-1.5 border border-ceramica-300 rounded-md text-sm text-mbc bg-white cursor-pointer"
         >
           <option value="todos">Todos los tipos</option>
           {TIPOS_ACCION.map(t => <option key={t} value={t}>{t}</option>)}
@@ -221,7 +247,7 @@ export default function ActividadesPage() {
           <select
             value={filtroAutor}
             onChange={(e) => setFiltroAutor(e.target.value)}
-            className="px-3 py-1.5 border border-gray-300 rounded-md text-sm text-gray-900 bg-white cursor-pointer"
+            className="px-3 py-1.5 border border-ceramica-300 rounded-md text-sm text-mbc bg-white cursor-pointer"
           >
             <option value="todos">Todos los autores</option>
             {autoresUnicos.map(a => (
@@ -233,27 +259,27 @@ export default function ActividadesPage() {
         {hayFiltros && (
           <button
             onClick={limpiarFiltros}
-            className="text-xs text-gray-700 hover:text-gray-900 underline px-2"
+            className="text-xs text-tinta hover:text-mbc underline px-2"
           >
             Limpiar filtros
           </button>
         )}
 
-        <span className="ml-auto text-xs text-gray-600">
+        <span className="ml-auto text-xs text-arena">
           {filtradas.length} de {actividades.length}
         </span>
       </div>
 
       {/* Timeline */}
       {filtradas.length === 0 ? (
-        <div className="bg-white border border-gray-200 rounded-xl p-12 text-center">
+        <div className="bg-white border border-ceramica-300 rounded-xl p-12 text-center">
           {actividades.length === 0 ? (
             <>
-              <p className="text-sm text-gray-700">Aún no has registrado ninguna actividad.</p>
-              <p className="text-xs text-gray-500 mt-1">Cuando registres una acción desde la ficha de un contacto, aparecerá aquí.</p>
+              <p className="text-sm text-tinta">Aún no has registrado ninguna actividad.</p>
+              <p className="text-xs text-arena mt-1">Cuando registres una acción desde la ficha de un contacto, aparecerá aquí.</p>
             </>
           ) : (
-            <p className="text-sm text-gray-700">Ninguna actividad coincide con los filtros.</p>
+            <p className="text-sm text-tinta">Ninguna actividad coincide con los filtros.</p>
           )}
         </div>
       ) : (
@@ -265,14 +291,14 @@ export default function ActividadesPage() {
               <div
                 key={a.id}
                 onClick={() => c && router.push(`/contactos/${c.id}`)}
-                className="bg-white border border-gray-200 rounded-xl p-4 cursor-pointer hover:bg-gray-50 transition-colors"
+                className="bg-white border border-ceramica-300 rounded-xl p-4 cursor-pointer hover:bg-ceramica transition-colors"
               >
                 <div className="flex items-start gap-3">
                   {/* Avatar del autor */}
                   {autor && (
                     <div
                       className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium text-white flex-shrink-0"
-                      style={{ backgroundColor: '#9C0C54' }}
+                      style={{ backgroundColor: '#0A3A6B' }}
                       title={autor.nombre}
                     >
                       {autor.iniciales}
@@ -283,33 +309,33 @@ export default function ActividadesPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-baseline justify-between gap-2 flex-wrap mb-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs px-2 py-0.5 rounded font-medium" style={{ backgroundColor: '#E6F1FB', color: '#0C447C' }}>
+                        <span className="text-xs px-2 py-0.5 rounded font-medium" style={{ backgroundColor: '#E2F4F8', color: '#0A6C7E' }}>
                           {a.tipo}
                         </span>
                         {c && (
                           <span className="text-sm">
-                            con <span className="font-medium text-gray-900">{c.nombre}</span>
-                            <span className="text-gray-600"> · {c.empresa}</span>
+                            con <span className="font-medium text-mbc">{c.nombre}</span>
+                            <span className="text-arena"> · {c.empresa}</span>
                           </span>
                         )}
                       </div>
-                      <div className="text-xs text-gray-600">
+                      <div className="text-xs text-arena">
                         {tagRelativo(a.fecha)} · {formatearFechaCorta(a.fecha)}
                       </div>
                     </div>
 
                     {a.resultado && (
-                      <p className="text-sm text-gray-800 mt-1.5">{a.resultado}</p>
+                      <p className="text-sm text-tinta mt-1.5">{a.resultado}</p>
                     )}
 
                     {a.proximos_pasos && (
-                      <div className="text-xs text-gray-700 mt-2 pl-3 border-l-2" style={{ borderColor: '#FAEEDA' }}>
-                        <span className="text-gray-600">Próximos pasos:</span> {a.proximos_pasos}
+                      <div className="text-xs text-tinta mt-2 pl-3 border-l-2" style={{ borderColor: '#FDF0E1' }}>
+                        <span className="text-arena">Próximos pasos:</span> {a.proximos_pasos}
                       </div>
                     )}
 
                     {autor && (
-                      <div className="text-xs text-gray-500 italic mt-2">
+                      <div className="text-xs text-arena italic mt-2">
                         Registrado por {autor.nombre}
                       </div>
                     )}

@@ -77,66 +77,66 @@ export default function ModalProyecto({
         className="bg-white rounded-xl w-full max-w-xl max-h-[90vh] overflow-y-auto shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-          <h2 className="text-base font-medium text-gray-900">🎉 Registrar proyecto ganado</h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-900 text-xl leading-none">×</button>
+        <div className="px-6 py-4 border-b border-ceramica-300 flex items-center justify-between">
+          <h2 className="text-base font-medium text-mbc">🎉 Registrar proyecto ganado</h2>
+          <button onClick={onClose} className="text-arena hover:text-mbc text-xl leading-none">×</button>
         </div>
 
         <form onSubmit={handleSubmit} className="p-6">
           {/* Card de contexto */}
-          <div className="px-3 py-2 bg-gray-100 border border-gray-200 rounded-md text-sm mb-4">
-            <span className="font-medium text-gray-900">{contactoNombre}</span>
-            <span className="text-gray-700"> · {contactoEmpresa}</span>
+          <div className="px-3 py-2 bg-ceramica border border-ceramica-300 rounded-md text-sm mb-4">
+            <span className="font-medium text-mbc">{contactoNombre}</span>
+            <span className="text-tinta"> · {contactoEmpresa}</span>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2">
-              <label className="block text-xs font-medium text-gray-700 mb-1">Nombre del proyecto *</label>
+              <label className="block text-xs font-medium text-tinta mb-1">Nombre del proyecto *</label>
               <input
                 type="text"
                 required
                 value={form.nombre}
                 onChange={(e) => setForm({ ...form, nombre: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 focus:outline-none focus:ring-2"
+                className="w-full px-3 py-2 border border-ceramica-300 rounded-md text-sm text-mbc focus:outline-none focus:ring-2"
                 placeholder="Ej. Migración de Datalake fase 1"
               />
               {contactoOportunidad && (
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-arena mt-1">
                   Tomado de la oportunidad activa. Editable.
                 </p>
               )}
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Monto cerrado (USD)</label>
+              <label className="block text-xs font-medium text-tinta mb-1">Monto cerrado (USD)</label>
               <input
                 type="number"
                 step="1000"
                 min="0"
                 value={form.monto}
                 onChange={(e) => setForm({ ...form, monto: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 focus:outline-none focus:ring-2"
+                className="w-full px-3 py-2 border border-ceramica-300 rounded-md text-sm text-mbc focus:outline-none focus:ring-2"
                 placeholder="250000"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Fecha de cierre *</label>
+              <label className="block text-xs font-medium text-tinta mb-1">Fecha de cierre *</label>
               <input
                 type="date"
                 required
                 value={form.fecha_cierre}
                 onChange={(e) => setForm({ ...form, fecha_cierre: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 focus:outline-none focus:ring-2"
+                className="w-full px-3 py-2 border border-ceramica-300 rounded-md text-sm text-mbc focus:outline-none focus:ring-2"
               />
             </div>
 
             <div className="col-span-2">
-              <label className="block text-xs font-medium text-gray-700 mb-1">Notas (opcional)</label>
+              <label className="block text-xs font-medium text-tinta mb-1">Notas (opcional)</label>
               <textarea
                 value={form.notas}
                 onChange={(e) => setForm({ ...form, notas: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 focus:outline-none focus:ring-2 min-h-[60px] resize-y"
+                className="w-full px-3 py-2 border border-ceramica-300 rounded-md text-sm text-mbc focus:outline-none focus:ring-2 min-h-[60px] resize-y"
                 placeholder="Contexto, equipo asignado, observaciones..."
               />
             </div>
@@ -151,13 +151,13 @@ export default function ModalProyecto({
                 onChange={(e) => setLimpiarOportunidad(e.target.checked)}
                 className="mt-0.5"
               />
-              <label htmlFor="limpiar-oportunidad" className="text-xs text-gray-700 cursor-pointer">
+              <label htmlFor="limpiar-oportunidad" className="text-xs text-tinta cursor-pointer">
                 Quitar la oportunidad activa del contacto (ya se cerró)
               </label>
             </div>
           )}
 
-          <div className="text-xs p-3 rounded-md mt-4" style={{ backgroundColor: '#E1F5EE', color: '#085041' }}>
+          <div className="text-xs p-3 rounded-md mt-4" style={{ backgroundColor: '#E7F6EE', color: '#1E6B3C' }}>
             Este proyecto sumará a las métricas del manager y al ranking de contactos de oro.
           </div>
 
@@ -167,11 +167,11 @@ export default function ModalProyecto({
             </div>
           )}
 
-          <div className="flex justify-end gap-2 mt-6 pt-4 border-t border-gray-200">
+          <div className="flex justify-end gap-2 mt-6 pt-4 border-t border-ceramica-300">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+              className="px-4 py-2 text-sm font-medium text-tinta bg-white border border-ceramica-300 rounded-md hover:bg-ceramica"
             >
               Cancelar
             </button>
@@ -179,7 +179,7 @@ export default function ModalProyecto({
               type="submit"
               disabled={loading}
               className="px-4 py-2 text-sm font-medium text-white rounded-md hover:opacity-90 disabled:opacity-50"
-              style={{ backgroundColor: '#3B6D11' }}
+              style={{ backgroundColor: '#2E9E5B' }}
             >
               {loading ? 'Guardando...' : 'Registrar proyecto'}
             </button>

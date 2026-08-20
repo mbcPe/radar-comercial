@@ -229,13 +229,13 @@ export default function ModalImportarContactos({ onClose, onSuccess }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="p-6 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white">
-          <h2 className="text-lg font-medium text-gray-900">Importar contactos masivamente</h2>
+        <div className="p-6 border-b border-ceramica-300 flex items-center justify-between sticky top-0 bg-white">
+          <h2 className="text-lg font-medium text-mbc">Importar contactos masivamente</h2>
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-700"
+            className="text-arena hover:text-tinta"
             disabled={importando}
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -248,8 +248,8 @@ export default function ModalImportarContactos({ onClose, onSuccess }: Props) {
           {paso === 'upload' && (
             <>
               <div className="mb-6">
-                <h3 className="text-sm font-medium text-gray-900 mb-2">Instrucciones</h3>
-                <ol className="text-sm text-gray-700 space-y-1 list-decimal list-inside">
+                <h3 className="text-sm font-medium text-mbc mb-2">Instrucciones</h3>
+                <ol className="text-sm text-tinta space-y-1 list-decimal list-inside">
                   <li>Descarga la plantilla Excel</li>
                   <li>Llena los datos de tus contactos</li>
                   <li>Sube el archivo completado (Excel o CSV)</li>
@@ -258,12 +258,12 @@ export default function ModalImportarContactos({ onClose, onSuccess }: Props) {
 
               <button
                 onClick={descargarPlantilla}
-                className="mb-6 px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50 text-gray-700"
+                className="mb-6 px-4 py-2 text-sm border border-ceramica-300 rounded-md hover:bg-ceramica text-tinta"
               >
                 📥 Descargar plantilla Excel
               </button>
 
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+              <div className="border-2 border-dashed border-ceramica-300 rounded-lg p-8 text-center">
                 <input
                   type="file"
                   accept=".csv,.xlsx,.xls"
@@ -276,10 +276,10 @@ export default function ModalImportarContactos({ onClose, onSuccess }: Props) {
                   className="cursor-pointer block"
                 >
                   <div className="text-4xl mb-2">📂</div>
-                  <p className="text-sm text-gray-700 mb-1">
+                  <p className="text-sm text-tinta mb-1">
                     Haz clic para seleccionar un archivo
                   </p>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-arena">
                     Formatos soportados: Excel (.xlsx, .xls) o CSV
                   </p>
                 </label>
@@ -301,36 +301,36 @@ export default function ModalImportarContactos({ onClose, onSuccess }: Props) {
           {paso === 'preview' && (
             <>
               <div className="mb-4">
-                <p className="text-sm text-gray-700">
+                <p className="text-sm text-tinta">
                   Se importarán <strong>{preview.length} contactos</strong>. Revisa la vista previa:
                 </p>
               </div>
 
-              <div className="border border-gray-200 rounded-lg overflow-hidden mb-6 max-h-96 overflow-y-auto">
+              <div className="border border-ceramica-300 rounded-lg overflow-hidden mb-6 max-h-96 overflow-y-auto">
                 <table className="w-full text-sm">
-                  <thead className="bg-gray-50 sticky top-0">
+                  <thead className="bg-ceramica sticky top-0">
                     <tr>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Nombre</th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Empresa</th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">País</th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Prioridad</th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Owner</th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-tinta">Nombre</th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-tinta">Empresa</th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-tinta">País</th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-tinta">Prioridad</th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-tinta">Owner</th>
                     </tr>
                   </thead>
                   <tbody>
                     {preview.slice(0, 10).map((row, idx) => (
                       <tr key={idx} className="border-t border-gray-100">
-                        <td className="px-3 py-2 text-gray-900">{row.nombre}</td>
-                        <td className="px-3 py-2 text-gray-700">{row.empresa}</td>
-                        <td className="px-3 py-2 text-gray-700">{row.pais}</td>
-                        <td className="px-3 py-2 text-gray-700">{row.prioridad}</td>
-                        <td className="px-3 py-2 text-gray-700 text-xs">{row.manager_email}</td>
+                        <td className="px-3 py-2 text-mbc">{row.nombre}</td>
+                        <td className="px-3 py-2 text-tinta">{row.empresa}</td>
+                        <td className="px-3 py-2 text-tinta">{row.pais}</td>
+                        <td className="px-3 py-2 text-tinta">{row.prioridad}</td>
+                        <td className="px-3 py-2 text-tinta text-xs">{row.manager_email}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
                 {preview.length > 10 && (
-                  <div className="p-3 bg-gray-50 text-center text-xs text-gray-600">
+                  <div className="p-3 bg-ceramica text-center text-xs text-arena">
                     ... y {preview.length - 10} contactos más
                   </div>
                 )}
@@ -354,7 +354,7 @@ export default function ModalImportarContactos({ onClose, onSuccess }: Props) {
                     setArchivo(null);
                     setPreview([]);
                   }}
-                  className="px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50 text-gray-700"
+                  className="px-4 py-2 text-sm border border-ceramica-300 rounded-md hover:bg-ceramica text-tinta"
                   disabled={importando}
                 >
                   Cancelar
@@ -363,7 +363,7 @@ export default function ModalImportarContactos({ onClose, onSuccess }: Props) {
                   onClick={importar}
                   disabled={importando || errores.length > 0}
                   className="px-4 py-2 text-sm text-white rounded-md font-medium hover:opacity-90 disabled:opacity-50"
-                  style={{ backgroundColor: '#9C0C54' }}
+                  style={{ backgroundColor: '#0A3A6B' }}
                 >
                   {importando ? 'Importando...' : `Importar ${preview.length} contactos`}
                 </button>
@@ -374,10 +374,10 @@ export default function ModalImportarContactos({ onClose, onSuccess }: Props) {
           {paso === 'done' && (
             <div className="text-center py-8">
               <div className="text-5xl mb-4">✅</div>
-              <p className="text-lg font-medium text-gray-900 mb-2">
+              <p className="text-lg font-medium text-mbc mb-2">
                 ¡Importación completada!
               </p>
-              <p className="text-sm text-gray-700">
+              <p className="text-sm text-tinta">
                 Se importaron {preview.length} contactos correctamente
               </p>
             </div>
