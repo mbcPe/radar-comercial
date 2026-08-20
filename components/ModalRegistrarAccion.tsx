@@ -1,6 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { evaluarRegistro } from '@/lib/calidadRegistro';
+import { explicarError, type ErrorLegible } from '@/lib/lenguaje';
 import { createClient } from '@/lib/supabase';
 
 type Props = {
@@ -46,7 +48,7 @@ export default function ModalRegistrarAccion({
 }: Props) {
   const supabase = createClient();
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState<ErrorLegible | null>(null);
 
   const hoy = new Date().toISOString().slice(0, 10);
   const dias = DIAS_POR_PRIORIDAD[contactoPrioridad] || 60;
@@ -62,10 +64,31 @@ export default function ModalRegistrarAccion({
     oportunidad: contactoOportunidad || '',
   });
 
+  // El crítico revisa lo escrito en vivo y propone qué falta preguntar
+  const critica = useMemo(
+    () =>
+      evaluarRegistro({
+        tipo: form.tipo,
+        resultado: form.resultado,
+        proximosPasos: form.proximos_pasos,
+      }),
+    [form.tipo, form.resultado, form.proximos_pasos]
+  );
+
+  /** Añade el encabezado de lo que falta para que el consultor lo complete. */
+  const SALTO = String.fromCharCode(10);
+
+  function profundizar(plantilla: string) {
+    setForm((f) => ({
+      ...f,
+      resultado: f.resultado.trimEnd() + (f.resultado.trim() ? SALTO : '') + plantilla,
+    }));
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    setError('');
+    setError(null);
 
     // 1. Insertar la actividad
     const { error: insertError } = await supabase.from('actividades').insert({
@@ -78,7 +101,7 @@ export default function ModalRegistrarAccion({
     });
 
     if (insertError) {
-      setError(insertError.message);
+      setError(explicarError(insertError, 'guardar la acción'));
       setLoading(false);
       return;
     }
@@ -94,7 +117,7 @@ export default function ModalRegistrarAccion({
       .eq('id', contactoId);
 
     if (updateError) {
-      setError(updateError.message);
+      setError(explicarError(updateError, 'actualizar el contacto'));
       setLoading(false);
       return;
     }
@@ -200,13 +223,99 @@ export default function ModalRegistrarAccion({
             </div>
           </div>
 
+          {/* Crítico del nivel de detalle: qué falta y qué preguntar */}
+          <div
+            className="mt-5 rounded-xl p-4"
+            style={{
+              backgroundColor:
+                critica.nivel === 'solido'
+                  ? '#E7F6EE'
+                  : critica.nivel === 'aceptable'
+                    ? '#EAF2FE'
+                    : '#FDF0E1',
+            }}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="kicker" style={{ color: '#14548F' }}>
+                  Revisión del registro
+                </div>
+                <p className="mt-1 text-sm text-tinta">{critica.mensaje}</p>
+              </div>
+              <span
+                className="chip shrink-0"
+                style={{
+                  backgroundColor:
+                    critica.nivel === 'solido'
+                      ? '#2E9E5B'
+                      : critica.nivel === 'aceptable'
+                        ? '#1F6FEB'
+                        : '#E58413',
+                  color: '#fff',
+                }}
+              >
+                {critica.nivel === 'vacio'
+                  ? 'sin contenido'
+                  : critica.nivel === 'superficial'
+                    ? 'superficial'
+                    : critica.nivel === 'aceptable'
+                      ? 'aceptable'
+                      : 'sólido'}
+              </span>
+            </div>
+
+            {critica.huecos.length > 0 && (
+              <div className="mt-3">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-tinta/70">
+                  Toca lo que quieras profundizar
+                </p>
+                <div className="mt-2 space-y-1.5">
+                  {critica.huecos.map((h) => (
+                    <button
+                      key={h.id}
+                      type="button"
+                      onClick={() => profundizar(h.plantilla)}
+                      className="flex w-full items-start gap-2 rounded-lg bg-white/70 p-2 text-left transition-colors hover:bg-white"
+                    >
+                      <span
+                        className="mt-0.5 h-2 w-2 shrink-0 rounded-full"
+                        style={{ backgroundColor: h.critico ? '#D64545' : '#7C8899' }}
+                      />
+                      <span className="min-w-0">
+                        <span className="block text-xs font-semibold text-mbc">{h.etiqueta}</span>
+                        <span className="block text-[11px] text-tinta/80">{h.pregunta}</span>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
           <p className="text-xs text-arena mt-4">
             Quedará registrada como hecha por: <strong className="text-tinta">{autorNombre}</strong>
           </p>
 
           {error && (
-            <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-md p-2 mt-4">
-              {error}
+            <div
+              className="mt-4 rounded-xl p-3"
+              style={{ backgroundColor: '#FBEBEB' }}
+              role="alert"
+            >
+              <p className="text-sm font-semibold" style={{ color: '#A62222' }}>
+                {error.titulo}
+              </p>
+              <p className="mt-1 text-xs text-tinta">{error.sugerencia}</p>
+              {error.detalle && (
+                <details className="mt-2">
+                  <summary className="cursor-pointer text-[11px] text-arena">
+                    Detalle técnico
+                  </summary>
+                  <code className="mt-1 block break-all text-[11px] text-arena">
+                    {error.detalle}
+                  </code>
+                </details>
+              )}
             </div>
           )}
 
