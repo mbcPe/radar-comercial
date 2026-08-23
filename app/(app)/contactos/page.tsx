@@ -8,6 +8,8 @@ import ModalNuevoContacto from '@/components/ModalNuevoContacto';
 import ModalRegistrarAccion from '@/components/ModalRegistrarAccion';
 import ModalEditarContacto from '@/components/ModalEditarContacto';
 import ModalImportarContactos from '@/components/ModalImportarContactos';
+import { MODO_DEMO } from '@/lib/modoDemo';
+import { CONTACTOS, MANAGERS, USUARIO_DEMO } from '@/lib/demoData';
 
 type Contacto = {
   id: string;
@@ -16,12 +18,26 @@ type Contacto = {
   pais: string | null;
   cargo: string | null;
   prioridad: string;
+  last_touch: string | null;
   next_touch: string | null;
   estado: string;
   pausa_hasta: string | null;
   oportunidad: string | null;
   manager_id: string;
+  cumple: string | null;
 };
+
+/** Días hasta el próximo cumpleaños, ignorando el año de nacimiento. */
+function diasHastaCumple(cumple: string | null): number | null {
+  if (!cumple) return null;
+  const f = new Date(cumple);
+  if (Number.isNaN(f.getTime())) return null;
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+  let prox = new Date(hoy.getFullYear(), f.getMonth(), f.getDate());
+  if (prox < hoy) prox = new Date(hoy.getFullYear() + 1, f.getMonth(), f.getDate());
+  return Math.round((prox.getTime() - hoy.getTime()) / 86400000);
+}
 
 type Manager = {
   id: string;
@@ -44,10 +60,10 @@ function categoriaContacto(c: Contacto): Categoria {
 }
 
 const ESTADOS = {
-  rezagado: { label: 'Rezagado', bg: '#FCEBEB', text: '#791F1F' },
-  proximo: { label: 'Próximo', bg: '#FAEEDA', text: '#633806' },
-  aldia: { label: 'Al día', bg: '#EAF3DE', text: '#27500A' },
-  pausa: { label: 'En pausa', bg: '#E6F1FB', text: '#0C447C' },
+  rezagado: { label: 'Rezagado', bg: '#EAF2FE', text: '#A62222' },
+  proximo: { label: 'Próximo', bg: '#FDF0E1', text: '#9A5400' },
+  aldia: { label: 'Al día', bg: '#E7F6EE', text: '#1E6B3C' },
+  pausa: { label: 'En pausa', bg: '#E2F4F8', text: '#0A6C7E' },
 };
 
 function formatearCorto(fecha: string | null): string {
@@ -74,11 +90,25 @@ export default function ContactosPage() {
   const [filtroPrioridad, setFiltroPrioridad] = useState<string>('todos');
   const [filtroPais, setFiltroPais] = useState<string>('todos');
   const [filtroManager, setFiltroManager] = useState<string>('todos');
+  const [filtroEstado, setFiltroEstado] = useState<string>('todos');
+
+  // El semáforo del radar enlaza aquí con ?estado=rezagado|proximo|aldia|pausa
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search).get('estado');
+    if (p && ['rezagado', 'proximo', 'aldia', 'pausa'].includes(p)) setFiltroEstado(p);
+  }, []);
 
   async function loadContactos(mgrId: string, currentScope: string) {
+    if (MODO_DEMO) {
+      setContactos(
+        currentScope === 'propia' ? CONTACTOS.filter((c) => c.manager_id === mgrId) : CONTACTOS
+      );
+      return;
+    }
+
     let query = supabase
       .from('contactos')
-      .select('id, nombre, empresa, pais, cargo, prioridad, next_touch, estado, pausa_hasta, oportunidad, manager_id');
+      .select('id, nombre, empresa, pais, cargo, prioridad, last_touch, next_touch, estado, pausa_hasta, oportunidad, manager_id, cumple');
     
     if (currentScope === 'propia') {
       query = query.eq('manager_id', mgrId);
@@ -101,6 +131,14 @@ export default function ContactosPage() {
 
   useEffect(() => {
     async function loadData() {
+      if (MODO_DEMO) {
+        setManagerId(USUARIO_DEMO.id);
+        setManagers(MANAGERS);
+        await loadContactos(USUARIO_DEMO.id, scope);
+        setLoading(false);
+        return;
+      }
+
       const { data: { user: authUser } } = await supabase.auth.getUser();
       if (!authUser) return;
 
@@ -127,7 +165,7 @@ export default function ContactosPage() {
   }, [scope, managerId]);
 
   if (loading) {
-    return <div className="p-6 text-gray-700 text-sm">Cargando contactos...</div>;
+    return <div className="p-6 text-tinta text-sm">Cargando contactos...</div>;
   }
 
   let filtrados = contactos;
@@ -152,6 +190,10 @@ export default function ContactosPage() {
     filtrados = filtrados.filter(c => c.manager_id === filtroManager);
   }
 
+  if (filtroEstado !== 'todos') {
+    filtrados = filtrados.filter(c => categoriaContacto(c) === filtroEstado);
+  }
+
   const ordenados = filtrados.sort((a, b) => {
     const catA = categoriaContacto(a);
     const catB = categoriaContacto(b);
@@ -172,35 +214,37 @@ export default function ContactosPage() {
     setFiltroPrioridad('todos');
     setFiltroPais('todos');
     setFiltroManager('todos');
+    setFiltroEstado('todos');
   }
 
   const hayFiltrosActivos = 
     busqueda !== '' ||
     filtroPrioridad !== 'todos' ||
     filtroPais !== 'todos' ||
-    filtroManager !== 'todos';
+    filtroManager !== 'todos' ||
+    filtroEstado !== 'todos';
 
   const paisesUnicos = [...new Set(contactos.map(c => c.pais).filter(Boolean))];
 
   return (
     <div className="p-6">
-      <h2 className="text-lg font-medium text-gray-900 mb-1">Contactos</h2>
-      <p className="text-sm text-gray-700 mb-6">Tu cartera completa</p>
+      <h2 className="text-lg font-medium text-mbc mb-1">Contactos</h2>
+      <p className="text-sm text-tinta mb-6">Tu cartera completa</p>
 
       {/* Toolbar de filtros */}
-      <div className="bg-white border border-gray-200 rounded-xl p-3 mb-4 flex flex-wrap items-center gap-2">
+      <div className="bg-white border border-ceramica-300 rounded-xl p-3 mb-4 flex flex-wrap items-center gap-2">
         <input
           type="text"
           placeholder="🔍 Buscar por nombre o empresa..."
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
-          className="flex-1 min-w-[220px] px-3 py-1.5 border border-gray-300 rounded-md text-sm text-gray-900 focus:outline-none focus:ring-2"
+          className="flex-1 min-w-[220px] px-3 py-1.5 border border-ceramica-300 rounded-md text-sm text-mbc focus:outline-none focus:ring-2"
         />
 
         <select
           value={filtroPrioridad}
           onChange={(e) => setFiltroPrioridad(e.target.value)}
-          className="px-3 py-1.5 border border-gray-300 rounded-md text-sm text-gray-900 bg-white cursor-pointer"
+          className="px-3 py-1.5 border border-ceramica-300 rounded-md text-sm text-mbc bg-white cursor-pointer"
         >
           <option value="todos">Todas las prioridades</option>
           <option value="P1">P1 · 30 días</option>
@@ -211,7 +255,7 @@ export default function ContactosPage() {
         <select
           value={filtroPais}
           onChange={(e) => setFiltroPais(e.target.value)}
-          className="px-3 py-1.5 border border-gray-300 rounded-md text-sm text-gray-900 bg-white cursor-pointer"
+          className="px-3 py-1.5 border border-ceramica-300 rounded-md text-sm text-mbc bg-white cursor-pointer"
         >
           <option value="todos">Todos los países</option>
           {paisesUnicos.map(p => (
@@ -222,7 +266,7 @@ export default function ContactosPage() {
         <select
           value={filtroManager}
           onChange={(e) => setFiltroManager(e.target.value)}
-          className="px-3 py-1.5 border border-gray-300 rounded-md text-sm text-gray-900 bg-white cursor-pointer"
+          className="px-3 py-1.5 border border-ceramica-300 rounded-md text-sm text-mbc bg-white cursor-pointer"
         >
           <option value="todos">Todos los managers</option>
           {Object.values(managers).map(m => (
@@ -230,10 +274,36 @@ export default function ContactosPage() {
           ))}
         </select>
 
+        {/* Semáforo como filtro rápido (lo enlaza el radar) */}
+        <div className="flex flex-wrap items-center gap-1">
+          {([
+            ['todos', 'Todos', '#0A3A6B'],
+            ['rezagado', 'Rezagados', '#1F6FEB'],
+            ['proximo', 'Próximos', '#E58413'],
+            ['aldia', 'Al día', '#2E9E5B'],
+            ['pausa', 'En pausa', '#0D8FA6'],
+          ] as const).map(([valor, label, color]) => {
+            const activo = filtroEstado === valor;
+            return (
+              <button
+                key={valor}
+                onClick={() => setFiltroEstado(valor)}
+                className="chip transition-colors"
+                style={{
+                  backgroundColor: activo ? color : '#F3F6FA',
+                  color: activo ? '#fff' : '#2B3440',
+                }}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+
         {hayFiltrosActivos && (
           <button
             onClick={limpiarFiltros}
-            className="text-xs text-gray-700 hover:text-gray-900 underline px-2"
+            className="text-xs text-tinta hover:text-mbc underline px-2"
           >
             Limpiar filtros
           </button>
@@ -242,34 +312,34 @@ export default function ContactosPage() {
         <button
           onClick={() => setModalNuevoAbierto(true)}
           className="ml-auto text-xs px-3 py-1.5 text-white rounded-md font-medium hover:opacity-90"
-          style={{ backgroundColor: '#9C0C54' }}
+          style={{ backgroundColor: '#0A3A6B' }}
         >
           + Nuevo contacto
         </button>
 
         <button
           onClick={() => setModalImportarAbierto(true)}
-          className="text-xs px-3 py-1.5 border border-gray-300 rounded-md font-medium hover:bg-gray-50 text-gray-700"
+          className="text-xs px-3 py-1.5 border border-ceramica-300 rounded-md font-medium hover:bg-ceramica text-tinta"
         >
           📥 Importar
         </button>
       </div>
 
       {/* Tabla */}
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-        <div className="px-4 py-3 border-b border-gray-200 text-sm font-medium text-gray-900">
-          Contactos comerciales <span className="text-gray-600 font-normal">· {ordenados.length} resultados</span>
+      <div className="bg-white border border-ceramica-300 rounded-xl overflow-hidden">
+        <div className="px-4 py-3 border-b border-ceramica-300 text-sm font-medium text-mbc">
+          Contactos comerciales <span className="text-arena font-normal">· {ordenados.length} resultados</span>
         </div>
 
         {ordenados.length === 0 ? (
-          <div className="text-center py-12 text-gray-700 text-sm">
+          <div className="text-center py-12 text-tinta text-sm">
             {hayFiltrosActivos ? (
               <>
                 <p>Ningún contacto coincide con los filtros.</p>
                 <button
                   onClick={limpiarFiltros}
                   className="text-xs underline mt-2"
-                  style={{ color: '#9C0C54' }}
+                  style={{ color: '#0A3A6B' }}
                 >
                   Limpiar filtros
                 </button>
@@ -279,20 +349,20 @@ export default function ContactosPage() {
             )}
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="hidden overflow-x-auto md:block">
             <table className="w-full text-sm">
-              <thead className="bg-gray-50">
+              <thead className="bg-ceramica">
                 <tr className="text-left">
-                  <th className="px-3 py-2 text-xs font-medium text-gray-700 uppercase tracking-wide">Nombre</th>
-                  <th className="px-3 py-2 text-xs font-medium text-gray-700 uppercase tracking-wide">Empresa</th>
-                  <th className="px-3 py-2 text-xs font-medium text-gray-700 uppercase tracking-wide">País</th>
-                  <th className="px-3 py-2 text-xs font-medium text-gray-700 uppercase tracking-wide text-center">Manager</th>
-                  <th className="px-3 py-2 text-xs font-medium text-gray-700 uppercase tracking-wide">Cargo</th>
-                  <th className="px-3 py-2 text-xs font-medium text-gray-700 uppercase tracking-wide">Prio</th>
-                  <th className="px-3 py-2 text-xs font-medium text-gray-700 uppercase tracking-wide">Oportunidad</th>
-                  <th className="px-3 py-2 text-xs font-medium text-gray-700 uppercase tracking-wide">Último</th>
-                  <th className="px-3 py-2 text-xs font-medium text-gray-700 uppercase tracking-wide">Próximo</th>
-                  <th className="px-3 py-2 text-xs font-medium text-gray-700 uppercase tracking-wide">Estado</th>
+                  <th className="px-3 py-2 text-xs font-medium text-tinta uppercase tracking-wide">Nombre</th>
+                  <th className="px-3 py-2 text-xs font-medium text-tinta uppercase tracking-wide">Empresa</th>
+                  <th className="px-3 py-2 text-xs font-medium text-tinta uppercase tracking-wide">País</th>
+                  <th className="px-3 py-2 text-xs font-medium text-tinta uppercase tracking-wide text-center">Manager</th>
+                  <th className="px-3 py-2 text-xs font-medium text-tinta uppercase tracking-wide">Cargo</th>
+                  <th className="px-3 py-2 text-xs font-medium text-tinta uppercase tracking-wide">Prio</th>
+                  <th className="px-3 py-2 text-xs font-medium text-tinta uppercase tracking-wide">Oportunidad</th>
+                  <th className="px-3 py-2 text-xs font-medium text-tinta uppercase tracking-wide">Último</th>
+                  <th className="px-3 py-2 text-xs font-medium text-tinta uppercase tracking-wide">Próximo</th>
+                  <th className="px-3 py-2 text-xs font-medium text-tinta uppercase tracking-wide">Estado</th>
                   <th className="px-3 py-2"></th>
                 </tr>
               </thead>
@@ -305,22 +375,40 @@ export default function ContactosPage() {
                   return (
                     <tr
                       key={c.id}
-                      className="border-t border-gray-100 hover:bg-gray-50"
+                      className="border-t border-gray-100 hover:bg-ceramica"
                     >
-                      <td 
-                        className="px-3 py-3 font-medium text-gray-900 cursor-pointer"
+                      <td
+                        className="px-3 py-3 font-medium text-mbc cursor-pointer"
                         onClick={() => router.push(`/contactos/${c.id}`)}
                       >
-                        {c.nombre}
+                        <span className="flex items-center gap-1.5">
+                          {c.nombre}
+                          {(() => {
+                            const d = diasHastaCumple(c.cumple);
+                            if (d === null || d > 30) return null;
+                            return (
+                              <span
+                                title={`Cumpleaños ${d === 0 ? 'hoy' : `en ${d} días`}`}
+                                className="chip"
+                                style={{
+                                  backgroundColor: d <= 7 ? '#1F6FEB' : '#EAF2FE',
+                                  color: d <= 7 ? '#fff' : '#A62222',
+                                }}
+                              >
+                                🎂 {d === 0 ? 'hoy' : `${d}d`}
+                              </span>
+                            );
+                          })()}
+                        </span>
                       </td>
                       <td 
-                        className="px-3 py-3 text-gray-800 cursor-pointer"
+                        className="px-3 py-3 text-tinta cursor-pointer"
                         onClick={() => router.push(`/contactos/${c.id}`)}
                       >
                         {c.empresa}
                       </td>
                       <td 
-                        className="px-3 py-3 text-gray-700 cursor-pointer"
+                        className="px-3 py-3 text-tinta cursor-pointer"
                         onClick={() => router.push(`/contactos/${c.id}`)}
                       >
                         {c.pais || '—'}
@@ -332,7 +420,7 @@ export default function ContactosPage() {
                         {mgr && (
                           <div
                             className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-medium text-white mx-auto"
-                            style={{ backgroundColor: '#9C0C54' }}
+                            style={{ backgroundColor: '#0A3A6B' }}
                             title={mgr.nombre}
                           >
                             {mgr.iniciales}
@@ -340,7 +428,7 @@ export default function ContactosPage() {
                         )}
                       </td>
                       <td 
-                        className="px-3 py-3 text-gray-700 cursor-pointer"
+                        className="px-3 py-3 text-tinta cursor-pointer"
                         onClick={() => router.push(`/contactos/${c.id}`)}
                       >
                         {c.cargo || '—'}
@@ -349,7 +437,7 @@ export default function ContactosPage() {
                         className="px-3 py-3 cursor-pointer"
                         onClick={() => router.push(`/contactos/${c.id}`)}
                       >
-                        <span className="text-xs px-2 py-1 rounded font-medium bg-gray-100 text-gray-800">
+                        <span className="text-xs px-2 py-1 rounded font-medium bg-ceramica text-tinta">
                           {c.prioridad}
                         </span>
                       </td>
@@ -358,21 +446,21 @@ export default function ContactosPage() {
                         onClick={() => router.push(`/contactos/${c.id}`)}
                       >
                         {c.oportunidad ? (
-                          <span className="px-2 py-1 rounded font-medium" style={{ backgroundColor: '#E1F5EE', color: '#085041' }}>
+                          <span className="px-2 py-1 rounded font-medium" style={{ backgroundColor: '#E7F6EE', color: '#1E6B3C' }}>
                             {c.oportunidad.length > 18 ? c.oportunidad.slice(0, 18) + '…' : c.oportunidad}
                           </span>
                         ) : (
-                          <span className="text-gray-500">—</span>
+                          <span className="text-arena">—</span>
                         )}
                       </td>
-                      <td 
-                        className="px-3 py-3 text-gray-700 text-xs cursor-pointer"
+                      <td
+                        className="px-3 py-3 text-tinta text-xs cursor-pointer"
                         onClick={() => router.push(`/contactos/${c.id}`)}
                       >
-                        {formatearCorto(c.next_touch)}
+                        {formatearCorto(c.last_touch)}
                       </td>
-                      <td 
-                        className="px-3 py-3 text-gray-800 text-xs cursor-pointer"
+                      <td
+                        className="px-3 py-3 text-tinta text-xs cursor-pointer"
                         onClick={() => router.push(`/contactos/${c.id}`)}
                       >
                         {c.estado === 'pausa' ? formatearCorto(c.pausa_hasta) : formatearCorto(c.next_touch)}
@@ -393,8 +481,8 @@ export default function ContactosPage() {
                               setContactoSeleccionado(c);
                               setModalAccionAbierto(true);
                             }}
-                            className="w-7 h-7 flex items-center justify-center rounded border hover:bg-[#FFF5F9]"
-                            style={{ borderColor: '#9C0C54', color: '#9C0C54' }}
+                            className="w-7 h-7 flex items-center justify-center rounded border hover:bg-[#EAF2FE]"
+                            style={{ borderColor: '#0A3A6B', color: '#0A3A6B' }}
                             title="Registrar acción"
                           >
                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -407,8 +495,8 @@ export default function ContactosPage() {
                               setContactoSeleccionado(c);
                               setModalEditarAbierto(true);
                             }}
-                            className="w-7 h-7 flex items-center justify-center rounded border hover:bg-[#FFF5F9]"
-                            style={{ borderColor: '#9C0C54', color: '#9C0C54' }}
+                            className="w-7 h-7 flex items-center justify-center rounded border hover:bg-[#EAF2FE]"
+                            style={{ borderColor: '#0A3A6B', color: '#0A3A6B' }}
                             title="Editar contacto"
                           >
                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -423,6 +511,92 @@ export default function ContactosPage() {
                 })}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {/* En móvil la tabla de 11 columnas es ilegible: se muestra como tarjetas */}
+        {ordenados.length > 0 && (
+          <div className="divide-y divide-ceramica md:hidden">
+            {ordenados.map((c) => {
+              const cat = categoriaContacto(c);
+              const colors = ESTADOS[cat];
+              const mgr = managers[c.manager_id];
+              const dCumple = diasHastaCumple(c.cumple);
+
+              return (
+                <div key={c.id} className="p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="min-w-0 flex-1">
+                      <button
+                        onClick={() => router.push(`/contactos/${c.id}`)}
+                        className="block w-full truncate text-left text-sm font-semibold text-mbc"
+                      >
+                        {c.nombre}
+                        {dCumple !== null && dCumple <= 30 && (
+                          <span className="ml-1.5 text-xs">🎂</span>
+                        )}
+                      </button>
+                      <div className="truncate text-xs text-tinta/70">
+                        {c.empresa}
+                        {c.cargo ? ` · ${c.cargo}` : ''}
+                      </div>
+                    </div>
+                    {mgr && (
+                      <span
+                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold text-white"
+                        style={{ backgroundColor: '#0A3A6B' }}
+                        title={mgr.nombre}
+                      >
+                        {mgr.iniciales}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                    <span
+                      className="rounded-full px-2 py-1 text-[11px] font-semibold"
+                      style={{ backgroundColor: colors.bg, color: colors.text }}
+                    >
+                      {colors.label}
+                    </span>
+                    <span className="rounded-full bg-ceramica px-2 py-1 text-[11px] font-semibold text-tinta">
+                      {c.prioridad}
+                    </span>
+                    <span className="rounded-full bg-ceramica px-2 py-1 text-[11px] text-tinta">
+                      Próx. {c.estado === 'pausa' ? formatearCorto(c.pausa_hasta) : formatearCorto(c.next_touch)}
+                    </span>
+                  </div>
+
+                  {c.oportunidad && (
+                    <div className="mt-2 truncate text-xs text-tinta/70">
+                      <span className="font-semibold text-mbc">En juego:</span> {c.oportunidad}
+                    </div>
+                  )}
+
+                  {/* Objetivos táctiles de 40px, no de 28 como en la tabla */}
+                  <div className="mt-3 flex gap-2">
+                    <button
+                      onClick={() => {
+                        setContactoSeleccionado(c);
+                        setModalAccionAbierto(true);
+                      }}
+                      className="btn-primary flex-1 py-2.5 text-xs"
+                    >
+                      Registrar acción
+                    </button>
+                    <button
+                      onClick={() => {
+                        setContactoSeleccionado(c);
+                        setModalEditarAbierto(true);
+                      }}
+                      className="btn-ghost px-4 py-2.5 text-xs"
+                    >
+                      Editar
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

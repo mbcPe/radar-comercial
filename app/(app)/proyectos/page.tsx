@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase';
+import { MODO_DEMO } from '@/lib/modoDemo';
+import { CONTACTOS, PROYECTOS } from '@/lib/demoData';
 
 type Contacto = {
   id: string;
@@ -42,6 +44,29 @@ export default function ProyectosPage() {
 
   useEffect(() => {
     async function loadData() {
+      if (MODO_DEMO) {
+        const provs = [...PROYECTOS].sort(
+          (a, b) => new Date(b.fecha_cierre).getTime() - new Date(a.fecha_cierre).getTime()
+        );
+        setProyectos(provs);
+        const mapa = Object.fromEntries(CONTACTOS.map((c) => [c.id, c]));
+        setContactos(mapa);
+        const porContacto: Record<string, { count: number; monto: number }> = {};
+        provs.forEach((p) => {
+          porContacto[p.contacto_id] ??= { count: 0, monto: 0 };
+          porContacto[p.contacto_id].count++;
+          porContacto[p.contacto_id].monto += p.monto || 0;
+        });
+        setRanking(
+          Object.entries(porContacto)
+            .map(([cid, d]) => ({ contacto: mapa[cid], count: d.count, monto: d.monto }))
+            .filter((r) => r.contacto)
+            .sort((a, b) => b.monto - a.monto)
+        );
+        setLoading(false);
+        return;
+      }
+
       // Cargar todos los proyectos
       const { data: proyectosData } = await supabase
         .from('proyectos')
@@ -94,7 +119,7 @@ export default function ProyectosPage() {
   }, [supabase]);
 
   if (loading) {
-    return <div className="p-6 text-gray-700 text-sm">Cargando proyectos...</div>;
+    return <div className="p-6 text-tinta text-sm">Cargando proyectos...</div>;
   }
 
   const totalMonto = proyectos.reduce((sum, p) => sum + (p.monto || 0), 0);
@@ -103,43 +128,43 @@ export default function ProyectosPage() {
 
   return (
     <div className="p-6">
-      <h2 className="text-lg font-medium text-gray-900 mb-1">Proyectos ganados</h2>
-      <p className="text-sm text-gray-700 mb-6">Negocio cerrado del equipo</p>
+      <h2 className="text-lg font-medium text-mbc mb-1">Proyectos ganados</h2>
+      <p className="text-sm text-tinta mb-6">Negocio cerrado del equipo</p>
 
       {/* Métricas */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-        <div className="bg-gray-50 border border-gray-200 rounded-md p-3">
-          <div className="text-[10px] font-medium text-gray-700 uppercase tracking-wide mb-1">Proyectos</div>
-          <div className="text-2xl font-medium text-gray-900">{proyectos.length}</div>
-          <div className="text-xs text-gray-600 mt-0.5">total histórico</div>
+        <div className="bg-ceramica border border-ceramica-300 rounded-md p-3">
+          <div className="text-[10px] font-medium text-tinta uppercase tracking-wide mb-1">Proyectos</div>
+          <div className="text-2xl font-medium text-mbc">{proyectos.length}</div>
+          <div className="text-xs text-arena mt-0.5">total histórico</div>
         </div>
-        <div className="bg-gray-50 border border-gray-200 rounded-md p-3">
-          <div className="text-[10px] font-medium text-gray-700 uppercase tracking-wide mb-1">Monto cerrado</div>
-          <div className="text-2xl font-medium" style={{ color: '#3B6D11' }}>{formatearMonto(totalMonto)}</div>
-          <div className="text-xs text-gray-600 mt-0.5">acumulado</div>
+        <div className="bg-ceramica border border-ceramica-300 rounded-md p-3">
+          <div className="text-[10px] font-medium text-tinta uppercase tracking-wide mb-1">Monto cerrado</div>
+          <div className="text-2xl font-medium" style={{ color: '#2E9E5B' }}>{formatearMonto(totalMonto)}</div>
+          <div className="text-xs text-arena mt-0.5">acumulado</div>
         </div>
-        <div className="bg-gray-50 border border-gray-200 rounded-md p-3">
-          <div className="text-[10px] font-medium text-gray-700 uppercase tracking-wide mb-1">Productivos</div>
-          <div className="text-2xl font-medium text-gray-900">{contactosProductivos}</div>
-          <div className="text-xs text-gray-600 mt-0.5">contactos con 1+</div>
+        <div className="bg-ceramica border border-ceramica-300 rounded-md p-3">
+          <div className="text-[10px] font-medium text-tinta uppercase tracking-wide mb-1">Productivos</div>
+          <div className="text-2xl font-medium text-mbc">{contactosProductivos}</div>
+          <div className="text-xs text-arena mt-0.5">contactos con 1+</div>
         </div>
-        <div className="bg-gray-50 border border-gray-200 rounded-md p-3">
-          <div className="text-[10px] font-medium text-gray-700 uppercase tracking-wide mb-1">De oro</div>
-          <div className="text-2xl font-medium" style={{ color: '#BA7517' }}>{contactosOro}</div>
-          <div className="text-xs text-gray-600 mt-0.5">contactos con 2+</div>
+        <div className="bg-ceramica border border-ceramica-300 rounded-md p-3">
+          <div className="text-[10px] font-medium text-tinta uppercase tracking-wide mb-1">De oro</div>
+          <div className="text-2xl font-medium" style={{ color: '#E58413' }}>{contactosOro}</div>
+          <div className="text-xs text-arena mt-0.5">contactos con 2+</div>
         </div>
       </div>
 
       {proyectos.length === 0 ? (
-        <div className="bg-white border border-gray-200 rounded-xl p-12 text-center">
-          <p className="text-sm text-gray-700">Aún no hay proyectos cerrados.</p>
-          <p className="text-xs text-gray-500 mt-1">Cuando registres uno desde la ficha de un contacto, aparecerá aquí.</p>
+        <div className="bg-white border border-ceramica-300 rounded-xl p-12 text-center">
+          <p className="text-sm text-tinta">Aún no hay proyectos cerrados.</p>
+          <p className="text-xs text-arena mt-1">Cuando registres uno desde la ficha de un contacto, aparecerá aquí.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Top contactos de oro */}
-          <div className="bg-white border border-gray-200 rounded-xl p-4">
-            <h3 className="text-sm font-medium text-gray-900 mb-3">Top contactos de oro</h3>
+          <div className="bg-white border border-ceramica-300 rounded-xl p-4">
+            <h3 className="text-sm font-medium text-mbc mb-3">Top contactos de oro</h3>
             <div className="space-y-2">
               {ranking.slice(0, 8).map((r, idx) => {
                 const esOro = r.count >= 2;
@@ -148,8 +173,8 @@ export default function ProyectosPage() {
                     <div
                       className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0"
                       style={{
-                        backgroundColor: esOro ? '#FAEEDA' : '#F3F4F6',
-                        color: esOro ? '#633806' : '#374151',
+                        backgroundColor: esOro ? '#FDF0E1' : '#F3F4F6',
+                        color: esOro ? '#9A5400' : '#374151',
                       }}
                     >
                       {idx + 1}
@@ -157,15 +182,15 @@ export default function ProyectosPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-baseline justify-between gap-2 flex-wrap">
                         <div className="text-sm">
-                          <span className="font-medium text-gray-900">{r.contacto.nombre}</span>
+                          <span className="font-medium text-mbc">{r.contacto.nombre}</span>
                           {esOro && (
-                            <span className="ml-1.5" style={{ color: '#BA7517' }}>⭐</span>
+                            <span className="ml-1.5" style={{ color: '#E58413' }}>⭐</span>
                           )}
-                          <div className="text-xs text-gray-600">{r.contacto.empresa}</div>
+                          <div className="text-xs text-arena">{r.contacto.empresa}</div>
                         </div>
                         <div className="text-right">
-                          <div className="text-sm font-medium text-gray-900">{formatearMonto(r.monto)}</div>
-                          <div className="text-xs text-gray-600">
+                          <div className="text-sm font-medium text-mbc">{formatearMonto(r.monto)}</div>
+                          <div className="text-xs text-arena">
                             {r.count} {r.count === 1 ? 'proyecto' : 'proyectos'}
                           </div>
                         </div>
@@ -178,21 +203,21 @@ export default function ProyectosPage() {
           </div>
 
           {/* Últimos cerrados */}
-          <div className="bg-white border border-gray-200 rounded-xl p-4">
-            <h3 className="text-sm font-medium text-gray-900 mb-3">Últimos cerrados</h3>
+          <div className="bg-white border border-ceramica-300 rounded-xl p-4">
+            <h3 className="text-sm font-medium text-mbc mb-3">Últimos cerrados</h3>
             <div className="space-y-2">
               {proyectos.slice(0, 6).map(p => {
                 const c = contactos[p.contacto_id];
                 return (
-                  <div key={p.id} className="border border-gray-200 rounded-md p-3">
+                  <div key={p.id} className="border border-ceramica-300 rounded-md p-3">
                     <div className="flex justify-between items-start gap-2">
-                      <div className="font-medium text-sm text-gray-900">{p.nombre}</div>
-                      <div className="font-medium text-sm" style={{ color: '#3B6D11' }}>
+                      <div className="font-medium text-sm text-mbc">{p.nombre}</div>
+                      <div className="font-medium text-sm" style={{ color: '#2E9E5B' }}>
                         {formatearMonto(p.monto || 0)}
                       </div>
                     </div>
                     {c && (
-                      <div className="text-xs text-gray-600 mt-1">
+                      <div className="text-xs text-arena mt-1">
                         {c.nombre} · {c.empresa} · {formatearFecha(p.fecha_cierre)}
                       </div>
                     )}

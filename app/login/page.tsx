@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
+import { LogoMBC } from '@/components/ui/kit';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -44,40 +45,40 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="w-full max-w-md bg-white rounded-xl border border-gray-200 p-8 shadow-sm">
+    <div className="min-h-screen flex items-center justify-center bg-ceramica">
+      <div className="card w-full max-w-md p-8">
         <div className="mb-6">
-          <h1 className="text-xl font-medium text-gray-900">
-            Radar Comercial <span style={{ color: '#9C0C54' }}>Minsait</span>
-          </h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <LogoMBC size="lg" />
+          <h1 className="display mt-4 text-2xl">Radar Comercial</h1>
+          <p className="kicker mt-1">Minsait Business Consulting</p>
+          <p className="text-sm text-arena mt-3">
             {mode === 'login' ? 'Ingresa con tu cuenta' : 'Crea tu cuenta'}
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Email</label>
+            <label className="block text-xs font-medium text-arena mb-1">Email</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 focus:outline-none focus:ring-2"
-              style={{ outlineColor: '#9C0C54' }}
+              className="w-full px-3 py-2 border border-ceramica-300 rounded-md text-sm text-mbc focus:outline-none focus:ring-2"
+              style={{ outlineColor: '#0A3A6B' }}
               placeholder="tu@minsait.com"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Contraseña</label>
+            <label className="block text-xs font-medium text-arena mb-1">Contraseña</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
               minLength={6}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 focus:outline-none focus:ring-2"
+              className="w-full px-3 py-2 border border-ceramica-300 rounded-md text-sm text-mbc focus:outline-none focus:ring-2"
               placeholder="••••••••"
             />
           </div>
@@ -92,7 +93,7 @@ export default function LoginPage() {
             type="submit"
             disabled={loading}
             className="w-full text-white py-2 rounded-md text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
-            style={{ backgroundColor: '#9C0C54' }}
+            style={{ backgroundColor: '#0A3A6B' }}
           >
             {loading ? 'Cargando...' : mode === 'login' ? 'Iniciar sesión' : 'Crear cuenta'}
           </button>
@@ -100,7 +101,7 @@ export default function LoginPage() {
 
         <button
           onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); setError(''); }}
-          className="text-xs text-gray-500 hover:text-gray-700 mt-4 w-full text-center"
+          className="text-xs text-arena hover:text-tinta mt-4 w-full text-center"
         >
           {mode === 'login' ? '¿No tienes cuenta? Regístrate' : '¿Ya tienes cuenta? Inicia sesión'}
         </button>

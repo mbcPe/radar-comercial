@@ -90,11 +90,11 @@ export default function ModalNuevoContacto({ managerId, onClose, onSaved }: Prop
         className="bg-white rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-          <h2 className="text-base font-medium text-gray-900">Registrar nuevo contacto</h2>
+        <div className="px-6 py-4 border-b border-ceramica-300 flex items-center justify-between">
+          <h2 className="text-base font-medium text-mbc">Registrar nuevo contacto</h2>
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-900 text-xl leading-none"
+            className="text-arena hover:text-mbc text-xl leading-none"
           >
             ×
           </button>
@@ -103,7 +103,7 @@ export default function ModalNuevoContacto({ managerId, onClose, onSaved }: Prop
         <form onSubmit={handleSubmit} className="p-6">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">
+              <label className="block text-xs font-medium text-tinta mb-1">
                 Nombre completo *
               </label>
               <input
@@ -111,14 +111,14 @@ export default function ModalNuevoContacto({ managerId, onClose, onSaved }: Prop
                 required
                 value={form.nombre}
                 onChange={(e) => setForm({ ...form, nombre: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 focus:outline-none focus:ring-2"
-                style={{ '--tw-ring-color': '#9C0C54' } as React.CSSProperties}
+                className="w-full px-3 py-2 border border-ceramica-300 rounded-md text-sm text-mbc focus:outline-none focus:ring-2"
+                style={{ '--tw-ring-color': '#0A3A6B' } as React.CSSProperties}
                 placeholder="Ej. María Torres"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">
+              <label className="block text-xs font-medium text-tinta mb-1">
                 Empresa *
               </label>
               <input
@@ -126,57 +126,57 @@ export default function ModalNuevoContacto({ managerId, onClose, onSaved }: Prop
                 required
                 value={form.empresa}
                 onChange={(e) => setForm({ ...form, empresa: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 focus:outline-none focus:ring-2"
+                className="w-full px-3 py-2 border border-ceramica-300 rounded-md text-sm text-mbc focus:outline-none focus:ring-2"
                 placeholder="Ej. Interbank"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Cargo</label>
+              <label className="block text-xs font-medium text-tinta mb-1">Cargo</label>
               <input
                 type="text"
                 value={form.cargo}
                 onChange={(e) => setForm({ ...form, cargo: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 focus:outline-none focus:ring-2"
+                className="w-full px-3 py-2 border border-ceramica-300 rounded-md text-sm text-mbc focus:outline-none focus:ring-2"
                 placeholder="Ej. Head de Riesgos"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Área</label>
+              <label className="block text-xs font-medium text-tinta mb-1">Área</label>
               <input
                 type="text"
                 value={form.area}
                 onChange={(e) => setForm({ ...form, area: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 focus:outline-none focus:ring-2"
+                className="w-full px-3 py-2 border border-ceramica-300 rounded-md text-sm text-mbc focus:outline-none focus:ring-2"
                 placeholder="Ej. Riesgos"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Email</label>
+              <label className="block text-xs font-medium text-tinta mb-1">Email</label>
               <input
                 type="email"
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 focus:outline-none focus:ring-2"
+                className="w-full px-3 py-2 border border-ceramica-300 rounded-md text-sm text-mbc focus:outline-none focus:ring-2"
                 placeholder="contacto@empresa.com"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Teléfono</label>
+              <label className="block text-xs font-medium text-tinta mb-1">Teléfono</label>
               <input
                 type="text"
                 value={form.telefono}
                 onChange={(e) => setForm({ ...form, telefono: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 focus:outline-none focus:ring-2"
+                className="w-full px-3 py-2 border border-ceramica-300 rounded-md text-sm text-mbc focus:outline-none focus:ring-2"
                 placeholder="+51 999 999 999"
               />
             </div>
 
             <div className="col-span-2">
-              <label className="block text-xs font-medium text-gray-700 mb-2">Prioridad</label>
+              <label className="block text-xs font-medium text-tinta mb-2">Prioridad</label>
               <div className="grid grid-cols-3 gap-2">
                 {PRIORIDADES.map(p => (
                   <button
@@ -185,38 +185,38 @@ export default function ModalNuevoContacto({ managerId, onClose, onSaved }: Prop
                     onClick={() => handlePrioridadChange(p.value)}
                     className="py-2 text-sm rounded-md border font-medium transition-colors"
                     style={{
-                      backgroundColor: form.prioridad === p.value ? '#9C0C54' : '#fff',
+                      backgroundColor: form.prioridad === p.value ? '#0A3A6B' : '#fff',
                       color: form.prioridad === p.value ? '#fff' : '#374151',
-                      borderColor: form.prioridad === p.value ? '#9C0C54' : '#D1D5DB',
+                      borderColor: form.prioridad === p.value ? '#0A3A6B' : '#D1D5DB',
                     }}
                   >
                     {p.label}
                   </button>
                 ))}
               </div>
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-arena mt-1">
                 Determina cada cuántos días debes contactar a esta persona.
               </p>
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Cumpleaños</label>
+              <label className="block text-xs font-medium text-tinta mb-1">Cumpleaños</label>
               <input
                 type="date"
                 value={form.cumple}
                 onChange={(e) => setForm({ ...form, cumple: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 focus:outline-none focus:ring-2"
+                className="w-full px-3 py-2 border border-ceramica-300 rounded-md text-sm text-mbc focus:outline-none focus:ring-2"
               />
             </div>
            
             <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-tinta mb-1">
               País
             </label>
             <select
               value={form.pais}
               onChange={(e) => setForm({ ...form, pais: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#9C0C54] focus:border-transparent"
+              className="w-full px-3 py-2 border border-ceramica-300 rounded-md focus:ring-2 focus:ring-[#0A3A6B] focus:border-transparent"
             >
               <option value="">Seleccionar país</option>
               <option value="Argentina">Argentina</option>
@@ -245,7 +245,7 @@ export default function ModalNuevoContacto({ managerId, onClose, onSaved }: Prop
             </select>
           </div>
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">
+              <label className="block text-xs font-medium text-tinta mb-1">
                 Próximo contacto *
               </label>
               <input
@@ -253,34 +253,34 @@ export default function ModalNuevoContacto({ managerId, onClose, onSaved }: Prop
                 required
                 value={form.next_touch}
                 onChange={(e) => setForm({ ...form, next_touch: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 focus:outline-none focus:ring-2"
+                className="w-full px-3 py-2 border border-ceramica-300 rounded-md text-sm text-mbc focus:outline-none focus:ring-2"
               />
             </div>
 
             <div className="col-span-2">
-              <label className="block text-xs font-medium text-gray-700 mb-1">
+              <label className="block text-xs font-medium text-tinta mb-1">
                 Oportunidad activa (opcional)
               </label>
               <input
                 type="text"
                 value={form.oportunidad}
                 onChange={(e) => setForm({ ...form, oportunidad: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 focus:outline-none focus:ring-2"
+                className="w-full px-3 py-2 border border-ceramica-300 rounded-md text-sm text-mbc focus:outline-none focus:ring-2"
                 placeholder="Ej. Migración cloud Q3"
               />
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-arena mt-1">
                 Negocio en evaluación. Vacío si no hay nada concreto en juego.
               </p>
             </div>
 
             <div className="col-span-2">
-              <label className="block text-xs font-medium text-gray-700 mb-1">
+              <label className="block text-xs font-medium text-tinta mb-1">
                 Notas personales
               </label>
               <textarea
                 value={form.notas}
                 onChange={(e) => setForm({ ...form, notas: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 focus:outline-none focus:ring-2 min-h-[80px] resize-y"
+                className="w-full px-3 py-2 border border-ceramica-300 rounded-md text-sm text-mbc focus:outline-none focus:ring-2 min-h-[80px] resize-y"
                 placeholder="Datos blandos: intereses, hijos, contexto..."
               />
             </div>
@@ -292,11 +292,11 @@ export default function ModalNuevoContacto({ managerId, onClose, onSaved }: Prop
             </div>
           )}
 
-          <div className="flex justify-end gap-2 mt-6 pt-4 border-t border-gray-200">
+          <div className="flex justify-end gap-2 mt-6 pt-4 border-t border-ceramica-300">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+              className="px-4 py-2 text-sm font-medium text-tinta bg-white border border-ceramica-300 rounded-md hover:bg-ceramica"
             >
               Cancelar
             </button>
@@ -304,7 +304,7 @@ export default function ModalNuevoContacto({ managerId, onClose, onSaved }: Prop
               type="submit"
               disabled={loading}
               className="px-4 py-2 text-sm font-medium text-white rounded-md hover:opacity-90 disabled:opacity-50"
-              style={{ backgroundColor: '#9C0C54' }}
+              style={{ backgroundColor: '#0A3A6B' }}
             >
               {loading ? 'Guardando...' : 'Guardar contacto'}
             </button>

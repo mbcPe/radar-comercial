@@ -1,26 +1,224 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* ============================================================
+   Sistema de diseño Radar Comercial — arte MBC
+   Azul marino del logotipo + blanco, con el bloque octogonal
+   como gesto de marca. El azul está estimado del logo (#0A3A6B):
+   si el manual de marca indica otro, se cambia solo aquí.
+   ============================================================ */
+
+@theme {
+  /* Marca */
+  --color-mbc: #0a3a6b;
+  --color-mbc-900: #06274a;
+  --color-mbc-600: #14548f;
+  /* Acento interactivo: botones, selección, foco */
+  --color-acento: #1f6feb;
+  --color-acento-600: #1558c0;
+  --color-acento-200: #cfe0fb;
+  --color-acento-100: #eaf2fe;
+
+  /* Neutros fríos, para acompañar al marino */
+  --color-ceramica: #edf1f6;
+  --color-ceramica-300: #d6dee8;
+  /* Gris secundario que pasa AA sobre blanco (4.6:1) */
+  --color-arena: #7c8899;
+  --color-tinta: #2b3440;
+  --color-petroleo: #1a3b47;
+
+  /* Acentos de apoyo */
+  --color-verde: #2e9e5b;
+  --color-verde-100: #e7f6ee;
+  --color-naranja: #e58413;
+  --color-naranja-100: #fdf0e1;
+  --color-cian: #0d8fa6;
+  --color-cian-100: #e2f4f8;
+  --color-morado: #6b5bd2;
+  --color-morado-100: #eceafa;
+  --color-rosa: #d64545;
+
+  /* Semáforo de cartera */
+  --color-rezagado: #d64545;
+  --color-rezagado-soft: #fbebeb;
+  --color-proximo: #e58413;
+  --color-proximo-soft: #fdf0e1;
+  --color-aldia: #2e9e5b;
+  --color-aldia-soft: #e7f6ee;
+  --color-pausa: #0d8fa6;
+  --color-pausa-soft: #e2f4f8;
+
+  --font-sans: var(--font-figtree), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  --radius-card: 18px;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+@layer base {
+  body {
+    background-color: var(--color-ceramica);
+    color: var(--color-mbc);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  /* Los números de KPI y tablas no deben "bailar" al actualizarse */
+  .tnum,
+  table td,
+  table th {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Foco visible en toda la app: sin esto no se puede navegar con teclado */
+  :focus-visible {
+    outline: 2px solid var(--color-acento-600);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* En pantalla táctil ningún control baja de 40px de alto */
+  @media (max-width: 767px) {
+    button,
+    [role='button'],
+    select,
+    input[type='date'] {
+      min-height: 40px;
+    }
+  }
+
+  ::selection {
+    background-color: var(--color-acento);
+    color: #fff;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer components {
+  /* Contenedor blanco sobre fondo cerámica — bloque base de los decks */
+  .card {
+    background-color: #fff;
+    border-radius: var(--radius-card);
+    box-shadow: 0 1px 2px rgba(38, 7, 23, 0.06), 0 8px 24px -16px rgba(38, 7, 23, 0.25);
+  }
+
+  /* Bloque octogonal: las cuatro esquinas achaflanadas, como en las propuestas */
+  .notch {
+    clip-path: polygon(
+      14px 0,
+      calc(100% - 14px) 0,
+      100% 14px,
+      100% calc(100% - 14px),
+      calc(100% - 14px) 100%,
+      14px 100%,
+      0 calc(100% - 14px),
+      0 14px
+    );
+  }
+
+  /* Octógono pequeño: el bloque del logotipo MBC y los chips de marca */
+  .notch-sm {
+    clip-path: polygon(
+      7px 0,
+      calc(100% - 7px) 0,
+      100% 7px,
+      100% calc(100% - 7px),
+      calc(100% - 7px) 100%,
+      7px 100%,
+      0 calc(100% - 7px),
+      0 7px
+    );
+  }
+
+  /* Contenedor blanco octogonal, para cuando el bloque no lleva cabecera marino */
+  .card-oct {
+    background-color: #fff;
+    border-radius: 0;
+    clip-path: polygon(
+      18px 0,
+      calc(100% - 18px) 0,
+      100% 18px,
+      100% calc(100% - 18px),
+      calc(100% - 18px) 100%,
+      18px 100%,
+      0 calc(100% - 18px),
+      0 18px
+    );
+  }
+
+  /* Antetítulo tipo "02. METODOLOGÍA" */
+  .kicker {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--color-mbc-600);
+  }
+
+  /* Título-afirmación de lámina */
+  .display {
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    color: var(--color-mbc);
+    line-height: 1.12;
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.4;
+    white-space: nowrap;
+  }
+
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background-color: var(--color-acento);
+    color: #fff;
+    font-weight: 600;
+    border-radius: 10px;
+    transition: background-color 0.15s ease;
+  }
+  .btn-primary:hover {
+    background-color: var(--color-acento-600);
+  }
+
+  .btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background-color: #fff;
+    color: var(--color-mbc);
+    border: 1px solid var(--color-ceramica-300);
+    font-weight: 600;
+    border-radius: 10px;
+    transition: background-color 0.15s ease;
+  }
+  .btn-ghost:hover {
+    background-color: var(--color-acento-100);
+  }
+
+  .field {
+    width: 100%;
+    background-color: #fff;
+    border: 1px solid var(--color-ceramica-300);
+    border-radius: 10px;
+    padding: 8px 12px;
+    font-size: 14px;
+    color: var(--color-mbc);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  .field::placeholder {
+    color: var(--color-arena);
+  }
+  .field:focus {
+    outline: none;
+    border-color: var(--color-acento);
+    box-shadow: 0 0 0 3px var(--color-acento-200);
+  }
 }
