@@ -100,7 +100,15 @@ function consulta(nombre: string) {
   return api;
 }
 
-export function createDemoClient() {
+/**
+ * Instancia única. Los componentes llaman a createClient() en cada render y
+ * varios useEffect dependen de [supabase]: si devolviéramos un objeto nuevo
+ * cada vez, su identidad cambiaría en cada render y el efecto se repetiría
+ * sin fin ("Maximum update depth exceeded").
+ */
+let instancia: ReturnType<typeof construir> | null = null;
+
+function construir() {
   return {
     from: (nombre: string) => consulta(nombre),
     auth: {
@@ -110,4 +118,9 @@ export function createDemoClient() {
       signOut: async () => ({ error: null }),
     },
   } as any;
+}
+
+export function createDemoClient() {
+  if (!instancia) instancia = construir();
+  return instancia;
 }
