@@ -8,12 +8,11 @@
     "directory": ".open-next/assets",
     "binding": "ASSETS"
   },
-  // Solo se entra por hub.mbc-latam.com/lead_comercial, protegido por Cloudflare Access.
-  // El resto del Hub sigue yendo a GitHub Pages. Se apagan las URL *.workers.dev
-  // para que no exista una puerta sin login.
+  // Solo se entra por comercial.mbc-latam.com, protegido por Cloudflare Access.
+  // Se apagan las URL *.workers.dev para que no exista una puerta sin login.
   "workers_dev": false,
   "preview_urls": false,
-  "routes": [{ "pattern": "hub.mbc-latam.com/lead_comercial*", "zone_name": "mbc-latam.com" }],
+  "routes": [{ "pattern": "comercial.mbc-latam.com", "custom_domain": true }],
   "d1_databases": [
     {
       "binding": "DB",

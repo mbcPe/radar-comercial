@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Versión Cloudflare: vive dentro del Hub, en hub.mbc-latam.com/lead_comercial
+  // Opcional: servir la app bajo una ruta (p. ej. /lead_comercial)
   basePath: process.env.NEXT_PUBLIC_BASE_PATH || undefined,
 };
 
