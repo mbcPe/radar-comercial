@@ -8,9 +8,12 @@
 
 type Filtro = [string, 'eq' | 'neq' | 'in' | 'gte' | 'lte', unknown];
 
+/** Prefijo de la app dentro del Hub (p. ej. /lead_comercial); fetch no lo añade solo. */
+const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
+
 async function enviar(cuerpo: unknown) {
   try {
-    const r = await fetch('/api/db', {
+    const r = await fetch(`${BASE}/api/db`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(cuerpo),
@@ -77,7 +80,7 @@ function construir() {
     auth: {
       getUser: async () => {
         try {
-          const r = await fetch('/api/sesion', { cache: 'no-store' });
+          const r = await fetch(`${BASE}/api/sesion`, { cache: 'no-store' });
           const j = (await r.json()) as { user: { email: string } | null; error: { message: string } | null };
           return { data: { user: j.user }, error: j.error };
         } catch {
