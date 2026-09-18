@@ -1,0 +1,31 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "radar-comercial",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  // Solo se entra por el subdominio del Hub, que está protegido por Cloudflare Access.
+  // Se apagan las URL *.workers.dev para que no exista una puerta sin login.
+  "workers_dev": false,
+  "preview_urls": false,
+  "routes": [{ "pattern": "radar.hub.mbc-latam.com", "custom_domain": true }],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "radar-comercial",
+      "database_id": "8e1e2e7b-4aef-49b5-91f5-5dd348c63ee1",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "vars": {
+    // Se completan al crear la aplicación en Cloudflare Zero Trust > Access.
+    // Mientras estén vacías, la app no deja pasar a nadie (falla cerrada).
+    "ACCESS_TEAM_DOMAIN": "",
+    "ACCESS_AUD": ""
+  },
+  "observability": { "enabled": true }
+}

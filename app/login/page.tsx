@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
 import { LogoMBC } from '@/components/ui/kit';
+import { MODO_D1 } from '@/lib/modoDemo';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -13,6 +14,38 @@ export default function LoginPage() {
   const [mode, setMode] = useState<'login' | 'signup'>('login');
   const router = useRouter();
   const supabase = createClient();
+
+  // En la versión Cloudflare el login ya lo hizo Cloudflare Access: si la
+  // sesión es válida se entra directo; si no, se explica por qué (sin bucles).
+  const [avisoAcceso, setAvisoAcceso] = useState('');
+  useEffect(() => {
+    if (!MODO_D1) return;
+    supabase.auth.getUser().then(({ data, error }: { data: { user: unknown }; error: { message: string } | null }) => {
+      if (data?.user) router.replace('/');
+      else setAvisoAcceso(error?.message ?? 'No pudimos confirmar tu identidad.');
+    });
+  }, [router, supabase]);
+
+  if (MODO_D1) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-ceramica p-4">
+        <div className="card w-full max-w-md p-8 text-center">
+          <p className="kicker mb-2">Radar Comercial</p>
+          <h1 className="display text-xl text-mbc mb-3">
+            {avisoAcceso ? 'No pudimos abrir tu sesión' : 'Confirmando tu acceso…'}
+          </h1>
+          {avisoAcceso && (
+            <>
+              <p className="text-sm text-tinta mb-5">{avisoAcceso}</p>
+              <a href="/cdn-cgi/access/logout" className="btn-primary notch-sm inline-block">
+                Volver a entrar
+              </a>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

@@ -7,27 +7,38 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "dev:lan": "next dev -H 0.0.0.0"
+    "dev:lan": "next dev -H 0.0.0.0",
+    "cf:build": "cross-env NEXT_PUBLIC_DEMO=0 NEXT_PUBLIC_BACKEND=d1 opennextjs-cloudflare build",
+    "cf:deploy": "npm run cf:build && opennextjs-cloudflare deploy",
+    "cf:preview": "npm run cf:build && opennextjs-cloudflare preview",
+    "dev:d1": "cross-env NEXT_PUBLIC_DEMO=0 NEXT_PUBLIC_BACKEND=d1 next dev",
+    "db:local": "wrangler d1 migrations apply radar-comercial --local",
+    "db:remoto": "wrangler d1 migrations apply radar-comercial --remote",
+    "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.2",
     "@supabase/supabase-js": "^2.105.0",
     "chart.js": "^4.5.1",
-    "next": "16.2.4",
+    "jose": "^6.2.12",
+    "next": "^16.3.5",
     "papaparse": "^5.5.3",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@opennextjs/cloudflare": "^1.20.6",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/papaparse": "^5.5.2",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "cross-env": "^10.1.0",
     "eslint": "^9",
-    "eslint-config-next": "16.2.4",
+    "eslint-config-next": "^16.3.5",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "wrangler": "^4.134.0"
   }
 }
