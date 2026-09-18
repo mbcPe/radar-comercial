@@ -199,3 +199,41 @@ mapa de calor cuenta × mes en escala monocroma Pruno; matriz quién-conoce-a-qu
 - Nunca reescribir archivos con `Get-Content -Raw` + `Set-Content`: rompe los acentos (UTF-8 → cp1252).
   Usar `[System.IO.File]::ReadAllText/WriteAllText` con UTF8 sin BOM.
 - Tras tocar `globals.css`, Turbopack sirve CSS cacheado: hay que reiniciar `npm run dev` y borrar `.next`.
+
+## Versión Cloudflare: D1 + Access (rama `cloudflare-d1`, pusheada a origin)
+Se armó una segunda versión del backend para desplegar como herramienta propia del Hub MBC
+(pedido del usuario: "copiar el CRM y desplegarlo como subdominio de hub.mbc-latam.com"),
+en paralelo a la versión Vercel/Supabase de `main`, que sigue intacta.
+
+**Piezas (todas ya escritas y funcionando):**
+- `lib/supabaseD1.ts`: mismo cliente encadenable que `supabase-js` (`.from().select().eq()...`)
+  pero cada consulta viaja a `/api/db`. Así ninguna pantalla tuvo que reescribirse.
+- `app/api/db/route.ts` + `lib/servidor/sql.ts`: traducen esas consultas a SQL contra D1 con
+  lista blanca de columnas/operadores (sin DELETE, sin UPDATE sin filtro).
+- `app/api/sesion/route.ts` + `lib/servidor/identidad.ts`: el login lo hace **Cloudflare Access**
+  delante del Worker (JWT verificado con `jose`), no la app. Si el email no existe en `managers`
+  se crea solo; el primero en entrar queda admin.
+- `migrations/0001_esquema.sql`: mismas 4 tablas que Supabase, mismos nombres de columna
+  (para que el respaldo JSON de "Equipo > Respaldo de datos" sirva para poblar D1 tal cual).
+- `wrangler.jsonc`: `workers_dev: false` y `preview_urls: false` **a propósito** — sin Access
+  configurado, no debe existir ninguna URL sin login. Única entrada: `comercial.mbc-latam.com`.
+
+**Estado real verificado (2026-09-18):**
+- Base D1 `radar-comercial` creada y migrada (4 tablas + `d1_migrations`), vacía de datos.
+- Deploy real y en vivo en `comercial.mbc-latam.com` (confirmado con `wrangler tail`: `/login`
+  200, `/api/sesion` 401 "Access no configurado" — falla cerrada, como debe ser).
+- Rutas de prueba anteriores (`radar.hub.mbc-latam.com`, `hub.mbc-latam.com/lead_comercial`)
+  limpiadas con `wrangler triggers deploy` (deja solo la ruta declarada en `wrangler.jsonc`).
+- Tarjeta "Radar · El Cazador" agregada al Hub (`nelson2206/mbc-hub`, grupo Administrativo)
+  apuntando a `https://comercial.mbc-latam.com/`.
+- **Bloqueado en**: la app de Cloudflare Access todavía no existe. `ACCESS_TEAM_DOMAIN` y
+  `ACCESS_AUD` en `wrangler.jsonc` siguen vacíos. Esto requiere que el usuario (Nelson) entre a
+  **Cloudflare → Zero Trust → Access → Applications**, cree una app "Self-hosted" para
+  `comercial.mbc-latam.com` (recomendado: login por "One-time PIN" restringido a los correos del
+  equipo), y pase el Team Domain + AUD Tag generados. El token OAuth de `wrangler` en esta
+  máquina no tiene scope de Access, así que ningún agente puede hacer este paso por API.
+  Con esos dos valores: pegarlos en `wrangler.jsonc` → `vars` y `npm run cf:deploy`.
+- Pendiente después de eso: cargar los contactos/actividades reales (vía el respaldo JSON que
+  ya exporta la versión Vercel) y decidir si se resuelve el bloqueo de Netskope a
+  `*.mbc-latam.com` desde la red de Indra (ya afecta a otras herramientas del Hub; hay ticket
+  pendiente a TI) o si mientras tanto el equipo entra desde fuera de esa red.
