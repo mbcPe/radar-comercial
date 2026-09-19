@@ -260,3 +260,8 @@ comillas, tildes, booleanos y decimales pasan intactos.
 `.env.migracion` (ignorado por git) con `SUPABASE_URL` y `SUPABASE_KEY`, que llena el usuario.
 Sin `--aplicar` no escribe en D1; con `--remote --aplicar` carga en producción. Si la clave
 falla o Supabase devuelve todo vacío (posible RLS → usar service_role), aborta sin cargar.
+
+**Decisión 2026-09-18 (Nelson): partir de cero.** No se migran los datos de Supabase por
+ahora. D1 remota verificada con 0 filas en las 4 tablas; D1 local reseteada (esquema vacío).
+`db:migrar` / `db:cargar` quedan disponibles por si más adelante se decide recuperar datos.
+El primero que entre por Access queda como administrador.
