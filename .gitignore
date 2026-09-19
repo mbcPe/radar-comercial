@@ -43,3 +43,6 @@ next-env.d.ts
 # Cloudflare (OpenNext / wrangler)
 .open-next/
 .wrangler/
+
+# Copias de datos reales (migración Supabase -> D1): nunca a git
+respaldos/

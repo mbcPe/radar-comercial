@@ -15,7 +15,8 @@
     "db:local": "wrangler d1 migrations apply radar-comercial --local",
     "db:remoto": "wrangler d1 migrations apply radar-comercial --remote",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
-    "db:cargar": "node scripts/cargar-respaldo.mjs"
+    "db:cargar": "node scripts/cargar-respaldo.mjs",
+    "db:migrar": "node scripts/migrar-desde-supabase.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.2",
