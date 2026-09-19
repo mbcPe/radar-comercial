@@ -233,7 +233,23 @@ en paralelo a la versión Vercel/Supabase de `main`, que sigue intacta.
   equipo), y pase el Team Domain + AUD Tag generados. El token OAuth de `wrangler` en esta
   máquina no tiene scope de Access, así que ningún agente puede hacer este paso por API.
   Con esos dos valores: pegarlos en `wrangler.jsonc` → `vars` y `npm run cf:deploy`.
-- Pendiente después de eso: cargar los contactos/actividades reales (vía el respaldo JSON que
-  ya exporta la versión Vercel) y decidir si se resuelve el bloqueo de Netskope a
+- Cargador de datos listo y probado (2026-09-18): `npm run db:cargar -- <respaldo.json>`
+  (solo revisa y genera SQL) → `... --remote --aplicar` (carga). Ver sección siguiente.
+- Pendiente después de Access: bajar el respaldo real desde Vercel (Equipo > Descargar
+  respaldo, requiere que Nelson entre con su usuario) y cargarlo; y decidir si se resuelve el bloqueo de Netskope a
   `*.mbc-latam.com` desde la red de Indra (ya afecta a otras herramientas del Hub; hay ticket
   pendiente a TI) o si mientras tanto el equipo entra desde fuera de esa red.
+
+## Recuperar los datos reales en D1 (`scripts/cargar-respaldo.mjs`)
+1. En la versión Vercel (radar-comercial-kappa.vercel.app) → Equipo → **Descargar respaldo**.
+   Baja `radar-comercial-respaldo-<fecha>.json` con las 4 tablas completas.
+2. `npm run db:cargar -- ruta/al/respaldo.json` → muestra filas por tabla, avisa columnas
+   nuevas y deja el SQL en `.wrangler/`. No toca ninguna base.
+3. `npm run db:cargar -- ruta/al/respaldo.json --remote --aplicar` → carga en la D1 de
+   producción y muestra el conteo final por tabla (comparar con el del paso 2).
+
+Garantías (probadas en local con respaldo sintético): `INSERT OR IGNORE` (no pisa filas
+existentes; repetir la carga no duplica), columnas desconocidas se crean con `ALTER TABLE`
+en vez de perderse, y si alguien entró antes por Access (manager con id nuevo) se reasigna
+por email al id original junto con sus contactos/actividades/proyectos. Apóstrofes,
+comillas, tildes, booleanos y decimales pasan intactos.
