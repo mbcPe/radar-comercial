@@ -253,3 +253,10 @@ existentes; repetir la carga no duplica), columnas desconocidas se crean con `AL
 en vez de perderse, y si alguien entró antes por Access (manager con id nuevo) se reasigna
 por email al id original junto con sus contactos/actividades/proyectos. Apóstrofes,
 comillas, tildes, booleanos y decimales pasan intactos.
+
+**Vía directa, sin Vercel (preferida):** `npm run db:migrar` lee Supabase por su API REST
+(paginado de 1000 en 1000, probado con 1500 filas), guarda la copia en `respaldos/`
+(ignorada por git: contiene datos reales) y la pasa a `cargar-respaldo`. Las claves van en
+`.env.migracion` (ignorado por git) con `SUPABASE_URL` y `SUPABASE_KEY`, que llena el usuario.
+Sin `--aplicar` no escribe en D1; con `--remote --aplicar` carga en producción. Si la clave
+falla o Supabase devuelve todo vacío (posible RLS → usar service_role), aborta sin cargar.
