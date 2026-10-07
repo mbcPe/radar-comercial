@@ -16,7 +16,8 @@
     "db:remoto": "wrangler d1 migrations apply radar-comercial --remote",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
     "db:cargar": "node scripts/cargar-respaldo.mjs",
-    "db:migrar": "node scripts/migrar-desde-supabase.mjs"
+    "db:migrar": "node scripts/migrar-desde-supabase.mjs",
+    "correo:vista": "esbuild scripts/vista-resumen.mts --bundle --platform=node --format=esm --outfile=.wrangler/vista-resumen.mjs --log-level=warning && node .wrangler/vista-resumen.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.2",

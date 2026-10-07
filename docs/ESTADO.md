@@ -281,7 +281,7 @@ y **publicar directo** (deploy a comercial.mbc-latam.com). El correo semanal que
 - [x] 10 Fecha de próximo contacto válida siempre: import robusto (dd/mm/aaaa), relleno por cadencia,
        aviso de fechas lejanas, filtro "Revisar fechas" en /contactos, sin fecha = pendiente en agenda
 - [x] 11 Archivar / restaurar contacto (`contactos.archivado`, `archivado_en`)
-- [ ] 4 Correo semanal (2.ª entrega)
+- [x] 4 Correo semanal (2.ª entrega): construido y desplegado, envío apagado hasta tener clave de Resend
 
 Estado 2026-10-06: código de la Entrega 1 escrito; `tsc` limpio; lint sin errores nuevos (11 previos).
 Piezas nuevas: `lib/cartera.ts` (fechas locales, cadencia, cumple sin año), `components/ui/Ventana.tsx`
@@ -299,3 +299,13 @@ push de `cloudflare-d1` a origin (297d87b).
 hasta que Nelson cree la app en Zero Trust. Los usuarios que dieron el feedback usan hoy la versión
 Vercel/Supabase (`main`), que NO tiene estos cambios.
 Pendiente: #4 correo semanal (proveedor de correo + Cron Trigger), Access, y decidir si portar a `main`.
+
+## Correo semanal (#4) — 2026-10-06
+`lib/servidor/resumenSemanal.ts` arma un correo por manager (contactos de la semana: sin fecha, vencidos y
+hasta el domingo; próximos pasos pendientes; cumpleaños a 7 días). Sin pendientes no hay correo.
+`worker.mjs` envuelve el bundle de OpenNext y suma `scheduled`; cron `0 13 * * 1` (lunes 08:00 Lima).
+Vista previa sin enviar: `npm run correo:vista` (D1 local; `-- --remote` para producción) → `.wrangler/resumen-*.html`.
+Probado: cron disparado en local con `wrangler dev --test-scheduled` → log "no se envía… 1: dev@… (3 contactos, 1 pasos)".
+**Para activarlo** (acción de Nelson): cuenta en Resend + verificar dominio mbc-latam.com (registros DNS en Cloudflare),
+`npx wrangler secret put RESEND_API_KEY`, poner `RESUMEN_DESDE` en wrangler.jsonc y, para el piloto, `RESUMEN_SOLO_A`
+con su propio correo. Luego `npm run cf:deploy`.

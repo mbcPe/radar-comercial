@@ -1,7 +1,8 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "radar-comercial",
-  "main": ".open-next/worker.js",
+  // worker.mjs envuelve el bundle de OpenNext y suma el cron del correo semanal
+  "main": "worker.mjs",
   "compatibility_date": "2026-09-01",
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
   "assets": {
@@ -25,7 +26,14 @@
     // Se completan al crear la aplicación en Cloudflare Zero Trust > Access.
     // Mientras estén vacías, la app no deja pasar a nadie (falla cerrada).
     "ACCESS_TEAM_DOMAIN": "",
-    "ACCESS_AUD": ""
+    "ACCESS_AUD": "",
+    "APP_URL": "https://comercial.mbc-latam.com",
+    // Remitente verificado en Resend. La clave va como secreto: wrangler secret put RESEND_API_KEY
+    "RESUMEN_DESDE": "",
+    // Piloto: si se llena, todos los correos van solo a esta dirección
+    "RESUMEN_SOLO_A": ""
   },
+  // Correo de los lunes a las 08:00 de Lima (13:00 UTC). Sin RESEND_API_KEY no envía.
+  "triggers": { "crons": ["0 13 * * 1"] },
   "observability": { "enabled": true }
 }
