@@ -48,7 +48,8 @@ export default function LineaTiempoPage() {
         .from('contactos')
         .select(
           'id, nombre, empresa, cargo, prioridad, next_touch, estado, pausa_hasta, oportunidad, manager_id, pais, cumple'
-        );
+        )
+        .neq('archivado', true);
       // La vista compartida existe para ver la historia completa, pero respetamos
       // el alcance elegido en la barra superior.
       if (scope === 'propia' && me) q = q.eq('manager_id', me.id);

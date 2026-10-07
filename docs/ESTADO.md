@@ -265,3 +265,27 @@ falla o Supabase devuelve todo vacío (posible RLS → usar service_role), abort
 ahora. D1 remota verificada con 0 filas en las 4 tablas; D1 local reseteada (esquema vacío).
 `db:migrar` / `db:cargar` quedan disponibles por si más adelante se decide recuperar datos.
 El primero que entre por Access queda como administrador.
+
+## Feedback de usuarios (2026-10-06) — rama `feedback-usuarios-oct` sobre `cloudflare-d1`
+Decisión del usuario: implementar sobre la versión **Cloudflare D1**, eliminar = **archivar reversible**,
+y **publicar directo** (deploy a comercial.mbc-latam.com). El correo semanal queda para una 2.ª entrega
+(requiere proveedor de correo + Cron Trigger).
+- [x] 1 Próximos pasos con estado hecho/pendiente (`actividades.pasos_hecho`, `pasos_hecho_en`)
+- [x] 2 Filtro "próximos pasos pendientes" en /actividades
+- [x] 3 Cumpleaños con año opcional (`cumple` admite `--MM-DD`; helpers en `lib/cartera.ts`)
+- [x] 5 Responsive: modales a pantalla completa en móvil, grids 1 columna, /actividades
+- [x] 6 Clic en el fondo no cierra ventanas (se pierde lo escrito)
+- [x] 7 "Contactado" en portada abre el detalle con el medio ya elegido
+- [x] 8 Editar acciones registradas (`actividades.editado_en`)
+- [x] 9 Al registrar acción: cambiar prioridad y pasar a editar datos del contacto
+- [x] 10 Fecha de próximo contacto válida siempre: import robusto (dd/mm/aaaa), relleno por cadencia,
+       aviso de fechas lejanas, filtro "Revisar fechas" en /contactos, sin fecha = pendiente en agenda
+- [x] 11 Archivar / restaurar contacto (`contactos.archivado`, `archivado_en`)
+- [ ] 4 Correo semanal (2.ª entrega)
+
+Estado 2026-10-06: código de la Entrega 1 escrito; `tsc` limpio; lint sin errores nuevos (11 previos).
+Piezas nuevas: `lib/cartera.ts` (fechas locales, cadencia, cumple sin año), `components/ui/Ventana.tsx`
+(marco de modales: sin cierre por clic de fondo, pantalla completa en móvil), `components/ui/CampoCumple.tsx`,
+`migrations/0002_feedback_usuarios.sql`. Causa raíz del #10: la plantilla de importación decía
+"DEJAR EN BLANCO" en next_touch y el import guardaba texto crudo como fecha.
+Pendiente: verificación en local con D1 (`npm run db:local` + `dev:d1`), migración remota y deploy.

@@ -22,6 +22,7 @@ import {
   StackedShare,
   type EstadoCartera,
 } from '@/components/ui/kit';
+import { diasHastaCumple } from '@/lib/cartera';
 
 export type Contacto = {
   id: string;
@@ -85,18 +86,6 @@ function textoVencimiento(fecha: string | null): string {
   if (d === 0) return 'vence hoy';
   if (d === 1) return 'vence mañana';
   return `en ${d} días`;
-}
-
-/** Días que faltan para el próximo cumpleaños, ignorando el año de nacimiento. */
-function diasHastaCumple(cumple: string | null | undefined): number | null {
-  if (!cumple) return null;
-  const f = new Date(cumple);
-  if (Number.isNaN(f.getTime())) return null;
-  const hoy = new Date();
-  hoy.setHours(0, 0, 0, 0);
-  let prox = new Date(hoy.getFullYear(), f.getMonth(), f.getDate());
-  if (prox < hoy) prox = new Date(hoy.getFullYear() + 1, f.getMonth(), f.getDate());
-  return Math.round((prox.getTime() - hoy.getTime()) / 86400000);
 }
 
 function textoCumple(dias: number): string {

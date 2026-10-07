@@ -10,6 +10,7 @@ import ModalEditarContacto from '@/components/ModalEditarContacto';
 import ModalImportarContactos from '@/components/ModalImportarContactos';
 import { MODO_DEMO } from '@/lib/modoDemo';
 import { CONTACTOS, MANAGERS, USUARIO_DEMO } from '@/lib/demoData';
+import { diasHasta, diasHastaCumple, formatearFecha, problemaFecha, TEXTO_PROBLEMA } from '@/lib/cartera';
 
 type Contacto = {
   id: string;
@@ -25,19 +26,8 @@ type Contacto = {
   oportunidad: string | null;
   manager_id: string;
   cumple: string | null;
+  archivado?: boolean | null;
 };
-
-/** Días hasta el próximo cumpleaños, ignorando el año de nacimiento. */
-function diasHastaCumple(cumple: string | null): number | null {
-  if (!cumple) return null;
-  const f = new Date(cumple);
-  if (Number.isNaN(f.getTime())) return null;
-  const hoy = new Date();
-  hoy.setHours(0, 0, 0, 0);
-  let prox = new Date(hoy.getFullYear(), f.getMonth(), f.getDate());
-  if (prox < hoy) prox = new Date(hoy.getFullYear() + 1, f.getMonth(), f.getDate());
-  return Math.round((prox.getTime() - hoy.getTime()) / 86400000);
-}
 
 type Manager = {
   id: string;
@@ -45,21 +35,20 @@ type Manager = {
   iniciales: string;
 };
 
-type Categoria = 'rezagado' | 'proximo' | 'aldia' | 'pausa';
+type Categoria = 'sinfecha' | 'rezagado' | 'proximo' | 'aldia' | 'pausa';
 
 function categoriaContacto(c: Contacto): Categoria {
   if (c.estado === 'pausa') return 'pausa';
-  if (!c.next_touch) return 'aldia';
-  const hoy = new Date();
-  hoy.setHours(0, 0, 0, 0);
-  const next = new Date(c.next_touch);
-  const dias = Math.round((next.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24));
+  const dias = diasHasta(c.next_touch);
+  // Sin fecha válida ya no cuenta como "al día": así no se pierde de vista
+  if (dias === null) return 'sinfecha';
   if (dias < -7) return 'rezagado';
   if (dias <= 14) return 'proximo';
   return 'aldia';
 }
 
 const ESTADOS = {
+  sinfecha: { label: 'Sin fecha', bg: '#FBEBEB', text: '#A62222' },
   rezagado: { label: 'Rezagado', bg: '#EAF2FE', text: '#A62222' },
   proximo: { label: 'Próximo', bg: '#FDF0E1', text: '#9A5400' },
   aldia: { label: 'Al día', bg: '#E7F6EE', text: '#1E6B3C' },
@@ -67,9 +56,11 @@ const ESTADOS = {
 };
 
 function formatearCorto(fecha: string | null): string {
-  if (!fecha) return '—';
-  return new Date(fecha).toLocaleDateString('es', { day: '2-digit', month: 'short' });
+  return formatearFecha(fecha, { day: '2-digit', month: 'short' });
 }
+
+/** Filtros que no son categorías del semáforo. */
+const FILTROS_EXTRA = ['revisar', 'archivados'];
 
 export default function ContactosPage() {
   const router = useRouter();
@@ -95,7 +86,7 @@ export default function ContactosPage() {
   // El semáforo del radar enlaza aquí con ?estado=rezagado|proximo|aldia|pausa
   useEffect(() => {
     const p = new URLSearchParams(window.location.search).get('estado');
-    if (p && ['rezagado', 'proximo', 'aldia', 'pausa'].includes(p)) setFiltroEstado(p);
+    if (p && ['sinfecha', 'rezagado', 'proximo', 'aldia', 'pausa', ...FILTROS_EXTRA].includes(p)) setFiltroEstado(p);
   }, []);
 
   async function loadContactos(mgrId: string, currentScope: string) {
@@ -108,12 +99,12 @@ export default function ContactosPage() {
 
     let query = supabase
       .from('contactos')
-      .select('id, nombre, empresa, pais, cargo, prioridad, last_touch, next_touch, estado, pausa_hasta, oportunidad, manager_id, cumple');
-    
+      .select('id, nombre, empresa, pais, cargo, prioridad, last_touch, next_touch, estado, pausa_hasta, oportunidad, manager_id, cumple, archivado');
+
     if (currentScope === 'propia') {
       query = query.eq('manager_id', mgrId);
     }
-    
+
     const { data } = await query;
     setContactos(data || []);
   }
@@ -123,7 +114,7 @@ export default function ContactosPage() {
       .from('managers')
       .select('id, nombre, iniciales')
       .eq('activo', true);
-    
+
     const mapManagers: Record<string, Manager> = {};
     data?.forEach(m => { mapManagers[m.id] = m; });
     setManagers(mapManagers);
@@ -172,8 +163,8 @@ export default function ContactosPage() {
 
   if (busqueda) {
     const q = busqueda.toLowerCase();
-    filtrados = filtrados.filter(c => 
-      c.nombre.toLowerCase().includes(q) || 
+    filtrados = filtrados.filter(c =>
+      c.nombre.toLowerCase().includes(q) ||
       c.empresa.toLowerCase().includes(q)
     );
   }
@@ -190,23 +181,29 @@ export default function ContactosPage() {
     filtrados = filtrados.filter(c => c.manager_id === filtroManager);
   }
 
-  if (filtroEstado !== 'todos') {
+  // Los archivados solo se ven en su propio filtro
+  filtrados = filtrados.filter((c) => (filtroEstado === 'archivados') === Boolean(c.archivado));
+
+  if (filtroEstado === 'revisar') {
+    filtrados = filtrados.filter((c) => problemaFecha(c) !== null);
+  } else if (filtroEstado !== 'todos' && filtroEstado !== 'archivados') {
     filtrados = filtrados.filter(c => categoriaContacto(c) === filtroEstado);
   }
 
-  const ordenados = filtrados.sort((a, b) => {
+  const activos = contactos.filter((c) => !c.archivado);
+  const porRevisar = activos.filter((c) => problemaFecha(c) !== null).length;
+  const archivados = contactos.length - activos.length;
+
+  const ordenados = [...filtrados].sort((a, b) => {
     const catA = categoriaContacto(a);
     const catB = categoriaContacto(b);
-    
-    const orden = { rezagado: 1, proximo: 2, aldia: 3, pausa: 4 };
+
+    const orden = { sinfecha: 0, rezagado: 1, proximo: 2, aldia: 3, pausa: 4 };
     if (orden[catA] !== orden[catB]) {
       return orden[catA] - orden[catB];
     }
 
-    if (!a.next_touch && !b.next_touch) return 0;
-    if (!a.next_touch) return 1;
-    if (!b.next_touch) return -1;
-    return new Date(a.next_touch).getTime() - new Date(b.next_touch).getTime();
+    return (diasHasta(a.next_touch) ?? 0) - (diasHasta(b.next_touch) ?? 0);
   });
 
   function limpiarFiltros() {
@@ -217,7 +214,7 @@ export default function ContactosPage() {
     setFiltroEstado('todos');
   }
 
-  const hayFiltrosActivos = 
+  const hayFiltrosActivos =
     busqueda !== '' ||
     filtroPrioridad !== 'todos' ||
     filtroPais !== 'todos' ||
@@ -227,7 +224,7 @@ export default function ContactosPage() {
   const paisesUnicos = [...new Set(contactos.map(c => c.pais).filter(Boolean))];
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       <h2 className="text-lg font-medium text-mbc mb-1">Contactos</h2>
       <p className="text-sm text-tinta mb-6">Tu cartera completa</p>
 
@@ -282,7 +279,11 @@ export default function ContactosPage() {
             ['proximo', 'Próximos', '#E58413'],
             ['aldia', 'Al día', '#2E9E5B'],
             ['pausa', 'En pausa', '#0D8FA6'],
+            ['revisar', `⚠ Revisar fechas · ${porRevisar}`, '#D64545'],
+            ['archivados', `Archivados · ${archivados}`, '#7C8899'],
           ] as const).map(([valor, label, color]) => {
+            if (valor === 'archivados' && archivados === 0 && filtroEstado !== 'archivados') return null;
+            if (valor === 'revisar' && porRevisar === 0 && filtroEstado !== 'revisar') return null;
             const activo = filtroEstado === valor;
             return (
               <button
@@ -371,7 +372,7 @@ export default function ContactosPage() {
                   const cat = categoriaContacto(c);
                   const colors = ESTADOS[cat];
                   const mgr = managers[c.manager_id];
-                  
+
                   return (
                     <tr
                       key={c.id}
@@ -401,19 +402,19 @@ export default function ContactosPage() {
                           })()}
                         </span>
                       </td>
-                      <td 
+                      <td
                         className="px-3 py-3 text-tinta cursor-pointer"
                         onClick={() => router.push(`/contactos/${c.id}`)}
                       >
                         {c.empresa}
                       </td>
-                      <td 
+                      <td
                         className="px-3 py-3 text-tinta cursor-pointer"
                         onClick={() => router.push(`/contactos/${c.id}`)}
                       >
                         {c.pais || '—'}
                       </td>
-                      <td 
+                      <td
                         className="px-3 py-3 cursor-pointer text-center"
                         onClick={() => router.push(`/contactos/${c.id}`)}
                       >
@@ -427,13 +428,13 @@ export default function ContactosPage() {
                           </div>
                         )}
                       </td>
-                      <td 
+                      <td
                         className="px-3 py-3 text-tinta cursor-pointer"
                         onClick={() => router.push(`/contactos/${c.id}`)}
                       >
                         {c.cargo || '—'}
                       </td>
-                      <td 
+                      <td
                         className="px-3 py-3 cursor-pointer"
                         onClick={() => router.push(`/contactos/${c.id}`)}
                       >
@@ -441,7 +442,7 @@ export default function ContactosPage() {
                           {c.prioridad}
                         </span>
                       </td>
-                      <td 
+                      <td
                         className="px-3 py-3 text-xs cursor-pointer"
                         onClick={() => router.push(`/contactos/${c.id}`)}
                       >
@@ -464,8 +465,11 @@ export default function ContactosPage() {
                         onClick={() => router.push(`/contactos/${c.id}`)}
                       >
                         {c.estado === 'pausa' ? formatearCorto(c.pausa_hasta) : formatearCorto(c.next_touch)}
+                        {problemaFecha(c) === 'lejana' && (
+                          <span className="ml-1" style={{ color: '#9A5400' }} title="Más del doble de la cadencia de su prioridad">⚠</span>
+                        )}
                       </td>
-                      <td 
+                      <td
                         className="px-3 py-3 cursor-pointer"
                         onClick={() => router.push(`/contactos/${c.id}`)}
                       >
@@ -565,6 +569,11 @@ export default function ContactosPage() {
                     <span className="rounded-full bg-ceramica px-2 py-1 text-[11px] text-tinta">
                       Próx. {c.estado === 'pausa' ? formatearCorto(c.pausa_hasta) : formatearCorto(c.next_touch)}
                     </span>
+                    {problemaFecha(c) && (
+                      <span className="rounded-full px-2 py-1 text-[11px] font-semibold" style={{ backgroundColor: '#FBEBEB', color: '#A62222' }}>
+                        ⚠ {TEXTO_PROBLEMA[problemaFecha(c)!]}
+                      </span>
+                    )}
                   </div>
 
                   {c.oportunidad && (

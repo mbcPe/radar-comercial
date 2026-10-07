@@ -2,6 +2,9 @@
 
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase';
+import Ventana from '@/components/ui/Ventana';
+import CampoCumple, { cumpleIncompleto, cumpleParaGuardar } from '@/components/ui/CampoCumple';
+import { cadencia, esFechaLejana, PRIORIDADES, sugerirProximo } from '@/lib/cartera';
 
 type Props = {
   managerId: string;
@@ -9,21 +12,13 @@ type Props = {
   onSaved: () => void;
 };
 
-const PRIORIDADES = [
-  { value: 'P1', label: 'P1 · 30 días', dias: 30 },
-  { value: 'P2', label: 'P2 · 60 días', dias: 60 },
-  { value: 'P3', label: 'P3 · 75 días', dias: 75 },
-];
-
 export default function ModalNuevoContacto({ managerId, onClose, onSaved }: Props) {
   const supabase = createClient();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Calcular fecha sugerida para next_touch (60 días por defecto = P2)
-  const hoy = new Date();
-  const fechaSugerida = new Date(hoy.getTime() + 60 * 24 * 60 * 60 * 1000)
-    .toISOString().slice(0, 10);
+  // Fecha sugerida para next_touch según la prioridad por defecto (P2)
+  const fechaSugerida = sugerirProximo('P2');
 
   const [form, setForm] = useState({
     nombre: '',
@@ -42,14 +37,15 @@ export default function ModalNuevoContacto({ managerId, onClose, onSaved }: Prop
 
   // Cuando cambia la prioridad, recalcular fecha sugerida
   function handlePrioridadChange(nuevaPrio: string) {
-    const dias = PRIORIDADES.find(p => p.value === nuevaPrio)?.dias || 60;
-    const nuevaFecha = new Date(hoy.getTime() + dias * 24 * 60 * 60 * 1000)
-      .toISOString().slice(0, 10);
-    setForm({ ...form, prioridad: nuevaPrio, next_touch: nuevaFecha });
+    setForm({ ...form, prioridad: nuevaPrio, next_touch: sugerirProximo(nuevaPrio) });
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (cumpleIncompleto(form.cumple)) {
+      setError('El cumpleaños necesita día y mes (el año es opcional).');
+      return;
+    }
     setLoading(true);
     setError('');
 
@@ -60,7 +56,7 @@ export default function ModalNuevoContacto({ managerId, onClose, onSaved }: Prop
       area: form.area || null,
       email: form.email || null,
       telefono: form.telefono || null,
-      cumple: form.cumple || null,
+      cumple: cumpleParaGuardar(form.cumple),
       pais: form.pais || null,
       prioridad: form.prioridad,
       next_touch: form.next_touch,
@@ -82,26 +78,9 @@ export default function ModalNuevoContacto({ managerId, onClose, onSaved }: Prop
   }
 
   return (
-    <div
-      className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
-      onClick={onClose}
-    >
-      <div
-        className="bg-white rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="px-6 py-4 border-b border-ceramica-300 flex items-center justify-between">
-          <h2 className="text-base font-medium text-mbc">Registrar nuevo contacto</h2>
-          <button
-            onClick={onClose}
-            className="text-arena hover:text-mbc text-xl leading-none"
-          >
-            ×
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="p-6">
-          <div className="grid grid-cols-2 gap-4">
+    <Ventana titulo="Registrar nuevo contacto" onClose={onClose}>
+        <form onSubmit={handleSubmit} className="p-4 sm:p-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-tinta mb-1">
                 Nombre completo *
@@ -175,7 +154,7 @@ export default function ModalNuevoContacto({ managerId, onClose, onSaved }: Prop
               />
             </div>
 
-            <div className="col-span-2">
+            <div className="sm:col-span-2">
               <label className="block text-xs font-medium text-tinta mb-2">Prioridad</label>
               <div className="grid grid-cols-3 gap-2">
                 {PRIORIDADES.map(p => (
@@ -201,12 +180,7 @@ export default function ModalNuevoContacto({ managerId, onClose, onSaved }: Prop
 
             <div>
               <label className="block text-xs font-medium text-tinta mb-1">Cumpleaños</label>
-              <input
-                type="date"
-                value={form.cumple}
-                onChange={(e) => setForm({ ...form, cumple: e.target.value })}
-                className="w-full px-3 py-2 border border-ceramica-300 rounded-md text-sm text-mbc focus:outline-none focus:ring-2"
-              />
+              <CampoCumple valor={form.cumple} onChange={(v) => setForm({ ...form, cumple: v })} />
             </div>
            
             <div>
@@ -255,9 +229,14 @@ export default function ModalNuevoContacto({ managerId, onClose, onSaved }: Prop
                 onChange={(e) => setForm({ ...form, next_touch: e.target.value })}
                 className="w-full px-3 py-2 border border-ceramica-300 rounded-md text-sm text-mbc focus:outline-none focus:ring-2"
               />
+              {esFechaLejana(form.next_touch, form.prioridad) && (
+                <p className="text-xs mt-1" style={{ color: '#9A5400' }}>
+                  ⚠ Queda a más del doble de la cadencia de {form.prioridad} ({cadencia(form.prioridad)} días). Revisa que sea la fecha correcta.
+                </p>
+              )}
             </div>
 
-            <div className="col-span-2">
+            <div className="sm:col-span-2">
               <label className="block text-xs font-medium text-tinta mb-1">
                 Oportunidad activa (opcional)
               </label>
@@ -273,7 +252,7 @@ export default function ModalNuevoContacto({ managerId, onClose, onSaved }: Prop
               </p>
             </div>
 
-            <div className="col-span-2">
+            <div className="sm:col-span-2">
               <label className="block text-xs font-medium text-tinta mb-1">
                 Notas personales
               </label>
@@ -310,7 +289,6 @@ export default function ModalNuevoContacto({ managerId, onClose, onSaved }: Prop
             </button>
           </div>
         </form>
-      </div>
-    </div>
+    </Ventana>
   );
 }

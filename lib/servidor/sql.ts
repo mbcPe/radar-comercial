@@ -12,9 +12,12 @@ export const ESQUEMA: Record<string, readonly string[]> = {
   contactos: [
     'id', 'nombre', 'empresa', 'area', 'cargo', 'email', 'telefono', 'cumple', 'pais',
     'prioridad', 'last_touch', 'next_touch', 'estado', 'pausa_hasta', 'pausa_motivo',
-    'oportunidad', 'notas', 'manager_id', 'created_at',
+    'oportunidad', 'notas', 'manager_id', 'created_at', 'archivado', 'archivado_en',
   ],
-  actividades: ['id', 'contacto_id', 'autor_id', 'tipo', 'fecha', 'resultado', 'proximos_pasos', 'created_at'],
+  actividades: [
+    'id', 'contacto_id', 'autor_id', 'tipo', 'fecha', 'resultado', 'proximos_pasos', 'created_at',
+    'pasos_hecho', 'pasos_hecho_en', 'editado_en',
+  ],
   proyectos: ['id', 'nombre', 'contacto_id', 'monto', 'fecha_cierre', 'estado', 'manager_id', 'notas', 'created_at'],
 };
 

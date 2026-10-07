@@ -36,6 +36,7 @@ export default function PlantillasPage() {
       const { data: cs } = await supabase
         .from('contactos')
         .select('id, nombre, empresa, cargo, email, telefono, oportunidad')
+        .neq('archivado', true)
         .order('nombre');
       setContactos(cs || []);
       setLoading(false);

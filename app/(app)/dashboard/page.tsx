@@ -65,7 +65,8 @@ export default function DashboardPage() {
       .from('contactos')
       .select(
         'id, nombre, empresa, cargo, prioridad, next_touch, estado, pausa_hasta, oportunidad, manager_id, pais, cumple'
-      );
+      )
+      .neq('archivado', true);
     setContactos(contactosData || []);
 
     const { data: periodoData } = await supabase

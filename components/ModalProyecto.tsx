@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase';
+import Ventana from '@/components/ui/Ventana';
 
 type Props = {
   contactoId: string;
@@ -72,17 +73,8 @@ export default function ModalProyecto({
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={onClose}>
-      <div
-        className="bg-white rounded-xl w-full max-w-xl max-h-[90vh] overflow-y-auto shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="px-6 py-4 border-b border-ceramica-300 flex items-center justify-between">
-          <h2 className="text-base font-medium text-mbc">🎉 Registrar proyecto ganado</h2>
-          <button onClick={onClose} className="text-arena hover:text-mbc text-xl leading-none">×</button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="p-6">
+    <Ventana titulo="🎉 Registrar proyecto ganado" onClose={onClose} ancho="sm:max-w-xl">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-6">
           {/* Card de contexto */}
           <div className="px-3 py-2 bg-ceramica border border-ceramica-300 rounded-md text-sm mb-4">
             <span className="font-medium text-mbc">{contactoNombre}</span>
@@ -185,7 +177,6 @@ export default function ModalProyecto({
             </button>
           </div>
         </form>
-      </div>
-    </div>
+    </Ventana>
   );
 }

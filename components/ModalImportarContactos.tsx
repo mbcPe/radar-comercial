@@ -2,7 +2,17 @@
 
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase';
+import Ventana from '@/components/ui/Ventana';
 import * as XLSX from 'xlsx';
+import { componerCumple, leerCumple, normalizarFecha, sugerirProximo } from '@/lib/cartera';
+
+/** Cumpleaños desde Excel: fecha completa, serie numérica o 'DD/MM' sin año. */
+function cumpleDesdeCelda(valor: unknown): string | null {
+  if (valor === null || valor === undefined || valor === '') return null;
+  const texto = typeof valor === 'number' ? normalizarFecha(valor) : String(valor).trim();
+  const c = leerCumple(texto);
+  return c ? componerCumple(c.dia, c.mes, c.anio) : null;
+}
 
 type ContactoCSV = {
   nombre: string;
@@ -66,12 +76,12 @@ export default function ModalImportarContactos({ onClose, onSuccess }: Props) {
     'Cargo del contacto',
     'Mail del contacto',
     'Telelfono del contacto',
-    'Cumpleaños, formato: DD/MM/YYYY',
+    'Cumpleaños: DD/MM (sin año) o DD/MM/AAAA',
     'P1 / P2 / P3 (P1 es 30 dias, P2 es 60 dias y P3 es 75 dias)',
-    'Ultimo contacto. Formato: YYYY-MM-DD',
-    'DEJAR EN BLANCO',
+    'Último contacto: DD/MM/AAAA',
+    'Próximo contacto: DD/MM/AAAA. Si lo dejas vacío se calcula con la prioridad',
     'activo / pausa / inactivo (TODO en minusculas)',
-    'Hasta cuando esta en pausa el contacto. Formato: YYYY-MM-DD',
+    'Hasta cuándo está en pausa: DD/MM/AAAA',
     'Texto libre',
     'Texto libre',
     'Texto libre',
@@ -108,20 +118,36 @@ export default function ModalImportarContactos({ onClose, onSuccess }: Props) {
         const worksheet = workbook.Sheets[sheetName];
         
         // Convertir a JSON
-        const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: '' }) as ContactoCSV[];
+        const filas = XLSX.utils.sheet_to_json(worksheet, { defval: '' }) as ContactoCSV[];
+        // La plantilla trae una fila de instrucciones bajo los encabezados: se ignora
+        const conInstrucciones = filas[0]?.nombre === 'Nombre y apellido del contacto';
+        const jsonData = conInstrucciones ? filas.slice(1) : filas;
+        // Número de fila real en el Excel, para que los avisos apunten bien
+        const fila = (idx: number) => idx + (conInstrucciones ? 3 : 2);
         
         // Validación básica
         const erroresTemp: string[] = [];
         
         jsonData.forEach((row, idx) => {
-          if (!row.nombre) erroresTemp.push(`Fila ${idx + 2}: Falta nombre`);
-          if (!row.empresa) erroresTemp.push(`Fila ${idx + 2}: Falta empresa`);
-          if (!row.manager_email) erroresTemp.push(`Fila ${idx + 2}: Falta manager_email`);
+          if (!row.nombre) erroresTemp.push(`Fila ${fila(idx)}: Falta nombre`);
+          if (!row.empresa) erroresTemp.push(`Fila ${fila(idx)}: Falta empresa`);
+          if (!row.manager_email) erroresTemp.push(`Fila ${fila(idx)}: Falta manager_email`);
           if (row.prioridad && !['P1', 'P2', 'P3'].includes(row.prioridad)) {
-            erroresTemp.push(`Fila ${idx + 2}: Prioridad debe ser P1, P2 o P3`);
+            erroresTemp.push(`Fila ${fila(idx)}: Prioridad debe ser P1, P2 o P3`);
           }
           if (row.estado && !['activo', 'pausa', 'inactivo'].includes(row.estado)) {
-            erroresTemp.push(`Fila ${idx + 2}: Estado debe ser activo, pausa o inactivo`);
+            erroresTemp.push(`Fila ${fila(idx)}: Estado debe ser activo, pausa o inactivo`);
+          }
+          // Una fecha que no se entiende no se guarda como texto: se avisa antes de importar
+          (['next_touch', 'last_touch', 'pausa_hasta'] as const).forEach((col) => {
+            const v = row[col] as unknown;
+            if (v !== '' && v !== null && v !== undefined && !normalizarFecha(v)) {
+              erroresTemp.push(`Fila ${fila(idx)}: ${col} "${v}" no es una fecha válida (usa DD/MM/AAAA)`);
+            }
+          });
+          const cumple = row.cumple as unknown;
+          if (cumple !== '' && cumple !== null && cumple !== undefined && !cumpleDesdeCelda(cumple)) {
+            erroresTemp.push(`Fila ${fila(idx)}: cumple "${cumple}" no es válido (usa DD/MM o DD/MM/AAAA)`);
           }
         });
 
@@ -167,16 +193,10 @@ export default function ModalImportarContactos({ onClose, onSuccess }: Props) {
             return null;
           }
 
-          // Convertir fechas de Excel si es necesario
-          function parseFecha(fecha: any): string | null {
-            if (!fecha) return null;
-            if (typeof fecha === 'number') {
-              // Excel serializa fechas como números
-              const date = XLSX.SSF.parse_date_code(fecha);
-              return `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')}`;
-            }
-            return String(fecha).trim();
-          }
+          const prioridad = String(row.prioridad ?? '').trim() || 'P2';
+          const lastTouch = normalizarFecha(row.last_touch);
+          // Todo contacto sale con próximo contacto: si no vino, se calcula por su cadencia
+          const nextTouch = normalizarFecha(row.next_touch) ?? sugerirProximo(prioridad, lastTouch);
 
           return {
             nombre: row.nombre.trim(),
@@ -186,12 +206,12 @@ export default function ModalImportarContactos({ onClose, onSuccess }: Props) {
             cargo: row.cargo?.trim() || null,
             email: row.email?.trim() || null,
             telefono: row.telefono?.trim() || null,
-            cumple: row.cumple?.trim() || null,
-            prioridad: row.prioridad?.trim() || 'P2',
-            last_touch: parseFecha(row.last_touch),
-            next_touch: parseFecha(row.next_touch),
+            cumple: cumpleDesdeCelda(row.cumple),
+            prioridad,
+            last_touch: lastTouch,
+            next_touch: nextTouch,
             estado: row.estado?.trim() || 'activo',
-            pausa_hasta: parseFecha(row.pausa_hasta),
+            pausa_hasta: normalizarFecha(row.pausa_hasta),
             pausa_motivo: row.pausa_motivo?.trim() || null,
             oportunidad: row.oportunidad?.trim() || null,
             notas: row.notas?.trim() || null,
@@ -229,22 +249,8 @@ export default function ModalImportarContactos({ onClose, onSuccess }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="p-6 border-b border-ceramica-300 flex items-center justify-between sticky top-0 bg-white">
-          <h2 className="text-lg font-medium text-mbc">Importar contactos masivamente</h2>
-          <button
-            onClick={onClose}
-            className="text-arena hover:text-tinta"
-            disabled={importando}
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
-        <div className="p-6">
+    <Ventana titulo="Importar contactos masivamente" onClose={() => !importando && onClose()} ancho="sm:max-w-4xl">
+        <div className="p-4 sm:p-6">
           {paso === 'upload' && (
             <>
               <div className="mb-6">
@@ -383,7 +389,6 @@ export default function ModalImportarContactos({ onClose, onSuccess }: Props) {
             </div>
           )}
         </div>
-      </div>
-    </div>
+    </Ventana>
   );
 }

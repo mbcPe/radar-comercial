@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase';
+import Ventana from '@/components/ui/Ventana';
 
 type Props = {
   contactoId: string;
@@ -49,14 +50,8 @@ export default function ModalPausar({ contactoId, contactoNombre, onClose, onSav
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={onClose}>
-      <div className="bg-white rounded-xl w-full max-w-md shadow-xl" onClick={(e) => e.stopPropagation()}>
-        <div className="px-6 py-4 border-b border-ceramica-300 flex items-center justify-between">
-          <h2 className="text-base font-medium text-mbc">Pausar seguimiento</h2>
-          <button onClick={onClose} className="text-arena hover:text-mbc text-xl leading-none">×</button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="p-6">
+    <Ventana titulo="Pausar seguimiento" onClose={onClose} ancho="sm:max-w-md">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-6">
           <p className="text-sm text-tinta mb-4">
             <span className="font-medium text-mbc">{contactoNombre}</span> dejará de aparecer en alertas hasta la fecha que selecciones.
           </p>
@@ -93,7 +88,6 @@ export default function ModalPausar({ contactoId, contactoNombre, onClose, onSav
             </button>
           </div>
         </form>
-      </div>
-    </div>
+    </Ventana>
   );
 }

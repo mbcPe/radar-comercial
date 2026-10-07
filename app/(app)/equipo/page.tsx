@@ -132,7 +132,8 @@ export default function EquipoPage() {
       // Cargar todos los contactos
       const { data: contactosData } = await supabase
         .from('contactos')
-        .select('id, manager_id, estado, next_touch, oportunidad');
+        .select('id, manager_id, estado, next_touch, oportunidad')
+        .neq('archivado', true);
 
       // Cargar todos los proyectos
       const { data: proyectosData } = await supabase

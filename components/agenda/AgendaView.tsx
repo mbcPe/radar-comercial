@@ -12,6 +12,7 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import type { Contacto, Manager } from '@/components/dashboard/DashboardView';
 import { Avatar, Card, EmptyState, PageHeader, Progress, cx } from '@/components/ui/kit';
+import { diasHasta, diasHastaCumple } from '@/lib/cartera';
 
 const MEDIOS = [
   'Llamada',
@@ -42,24 +43,6 @@ const TEMATICAS: Record<string, Tematica> = {
   mantener: { id: 'mantener', etiqueta: 'Mantener contacto', icono: '🤝', color: '#0A3A6B', soft: '#E6EDF6', plantilla: 'aporte-valor' },
 };
 
-function diasHasta(fecha: string | null): number | null {
-  if (!fecha) return null;
-  const hoy = new Date();
-  hoy.setHours(0, 0, 0, 0);
-  return Math.round((new Date(fecha).getTime() - hoy.getTime()) / 86400000);
-}
-
-function diasHastaCumple(cumple: string | null | undefined): number | null {
-  if (!cumple) return null;
-  const f = new Date(cumple);
-  if (Number.isNaN(f.getTime())) return null;
-  const hoy = new Date();
-  hoy.setHours(0, 0, 0, 0);
-  let prox = new Date(hoy.getFullYear(), f.getMonth(), f.getDate());
-  if (prox < hoy) prox = new Date(hoy.getFullYear() + 1, f.getMonth(), f.getDate());
-  return Math.round((prox.getTime() - hoy.getTime()) / 86400000);
-}
-
 /** Por qué toca escribirle a esta persona, en orden de prioridad. */
 function tematicaDe(c: Contacto): Tematica {
   const cumple = diasHastaCumple(c.cumple);
@@ -72,11 +55,18 @@ function tematicaDe(c: Contacto): Tematica {
 }
 
 function textoPlazo(dias: number | null): string {
-  if (dias === null) return 'sin fecha';
+  if (dias === null) return 'sin fecha · ponle una';
   if (dias < 0) return `vencido hace ${Math.abs(dias)} d`;
   if (dias === 0) return 'vence hoy';
   if (dias === 1) return 'vence mañana';
   return `en ${dias} días`;
+}
+
+/** Vencido o por vencer hasta el domingo; los que no tienen fecha válida también entran. */
+function entraEnLaSemana(c: Contacto, hastaDomingo: number): boolean {
+  if (c.estado === 'pausa') return false;
+  const d = diasHasta(c.next_touch);
+  return d === null || d <= hastaDomingo;
 }
 
 export default function AgendaView({
@@ -88,8 +78,10 @@ export default function AgendaView({
 }: {
   contactos: Contacto[];
   managers: Record<string, Manager>;
+  /** Registro rápido, sin detalle. */
   onMarcarContactado?: (c: Contacto, medio: string) => Promise<void>;
-  onRegistrarAccion?: (c: Contacto) => void;
+  /** Abre el registro con detalle; `medio` llega preseleccionado si ya se eligió. */
+  onRegistrarAccion?: (c: Contacto, medio?: string) => void;
   /** Mueve el próximo contacto N días sin registrar actividad. */
   onPosponer?: (c: Contacto, dias: number) => Promise<void>;
 }) {
@@ -100,6 +92,18 @@ export default function AgendaView({
   /** 'lista' = todo a la vista; 'enfoque' = una tarjeta a la vez. */
   const [modo, setModo] = useState<'lista' | 'enfoque'>('lista');
   const [saltados, setSaltados] = useState<string[]>([]);
+  /** true = el medio registra al instante; false = abre el registro con detalle. */
+  const [rapido, setRapido] = useState(false);
+
+  /** Elegir el medio abre el detalle (pedido de los usuarios) salvo en modo rápido. */
+  function elegirMedio(c: Contacto, medio: string) {
+    if (onRegistrarAccion && !rapido) {
+      setMedioAbierto(null);
+      onRegistrarAccion(c, medio);
+      return;
+    }
+    void confirmar(c, medio);
+  }
 
   async function confirmar(c: Contacto, medio: string) {
     if (!onMarcarContactado) return;
@@ -119,12 +123,8 @@ export default function AgendaView({
     const hastaDomingo = 7 - (hoy.getDay() === 0 ? 7 : hoy.getDay());
 
     const pendientes = contactos
-      .filter((c) => {
-        if (c.estado === 'pausa') return false;
-        const d = diasHasta(c.next_touch);
-        return d !== null && d <= hastaDomingo;
-      })
-      .map((c) => ({ c, tema: tematicaDe(c), dias: diasHasta(c.next_touch) ?? 0 }))
+      .filter((c) => entraEnLaSemana(c, hastaDomingo))
+      .map((c) => ({ c, tema: tematicaDe(c), dias: diasHasta(c.next_touch) }))
       .filter((x) => filtroTema === 'todas' || x.tema.id === filtroTema);
 
     const porEmpresa = new Map<string, typeof pendientes>();
@@ -137,8 +137,9 @@ export default function AgendaView({
     return [...porEmpresa.entries()]
       .map(([empresa, lista]) => ({
         empresa,
-        lista: [...lista].sort((a, b) => a.dias - b.dias),
-        urgencia: Math.min(...lista.map((x) => x.dias)),
+        // Sin fecha válida va primero: es lo que más urge ordenar
+        lista: [...lista].sort((a, b) => (a.dias ?? -Infinity) - (b.dias ?? -Infinity)),
+        urgencia: Math.min(...lista.map((x) => x.dias ?? -Infinity)),
         duenos: [...new Set(lista.map((x) => x.c.manager_id))],
       }))
       .sort((a, b) => a.urgencia - b.urgencia);
@@ -149,7 +150,10 @@ export default function AgendaView({
     (s, g) => s + g.lista.filter((x) => !hechos.includes(x.c.id)).length,
     0
   );
-  const vencidos = cuentas.reduce((s, g) => s + g.lista.filter((x) => x.dias < 0).length, 0);
+  const vencidos = cuentas.reduce(
+    (s, g) => s + g.lista.filter((x) => x.dias === null || x.dias < 0).length,
+    0
+  );
   const avance = total > 0 ? Math.round(((total - restantes) / total) * 100) : 100;
 
   // Conteo por temática, para los filtros
@@ -158,9 +162,7 @@ export default function AgendaView({
     const hastaDomingo = 7 - (hoy.getDay() === 0 ? 7 : hoy.getDay());
     const m: Record<string, number> = {};
     contactos.forEach((c) => {
-      if (c.estado === 'pausa') return;
-      const d = diasHasta(c.next_touch);
-      if (d === null || d > hastaDomingo) return;
+      if (!entraEnLaSemana(c, hastaDomingo)) return;
       const t = tematicaDe(c);
       m[t.id] = (m[t.id] ?? 0) + 1;
     });
@@ -238,8 +240,8 @@ export default function AgendaView({
             <span
               className="chip"
               style={{
-                backgroundColor: dias < 0 ? '#FBEBEB' : '#F3F6FA',
-                color: dias < 0 ? '#A62222' : '#7C8899',
+                backgroundColor: dias === null || dias < 0 ? '#FBEBEB' : '#F3F6FA',
+                color: dias === null || dias < 0 ? '#A62222' : '#7C8899',
               }}
             >
               {textoPlazo(dias)}
@@ -261,7 +263,7 @@ export default function AgendaView({
                 {MEDIOS.map((m) => (
                   <button
                     key={m}
-                    onClick={() => confirmar(c, m)}
+                    onClick={() => elegirMedio(c, m)}
                     disabled={guardando === c.id}
                     className="rounded-full bg-ceramica px-4 py-2 text-sm font-semibold text-mbc transition-colors hover:bg-acento hover:text-white disabled:opacity-50"
                   >
@@ -269,12 +271,22 @@ export default function AgendaView({
                   </button>
                 ))}
               </div>
-              <button
-                onClick={() => setMedioAbierto(null)}
-                className="mt-3 text-xs text-tinta/60 hover:underline"
-              >
-                Cancelar
-              </button>
+              <div className="mt-3 flex justify-center gap-4">
+                <button
+                  onClick={() => setMedioAbierto(null)}
+                  className="text-xs text-tinta/60 hover:underline"
+                >
+                  Cancelar
+                </button>
+                {onRegistrarAccion && (
+                  <button
+                    onClick={() => setRapido((r) => !r)}
+                    className="text-xs text-tinta/60 hover:underline"
+                  >
+                    {rapido ? 'Prefiero anotar el detalle' : 'Solo marcar, sin detalle'}
+                  </button>
+                )}
+              </div>
             </div>
           ) : (
             <div className="mt-6 space-y-2">
@@ -486,8 +498,8 @@ export default function AgendaView({
                               <span
                                 className="chip"
                                 style={{
-                                  backgroundColor: dias < 0 ? '#FBEBEB' : '#F3F6FA',
-                                  color: dias < 0 ? '#A62222' : '#7C8899',
+                                  backgroundColor: dias === null || dias < 0 ? '#FBEBEB' : '#F3F6FA',
+                                  color: dias === null || dias < 0 ? '#A62222' : '#7C8899',
                                 }}
                               >
                                 {hecho ? 'contactado hoy' : textoPlazo(dias)}
@@ -518,12 +530,19 @@ export default function AgendaView({
                         {/* Paso 2: por qué medio */}
                         {abierto && !hecho && (
                           <div className="mt-3 rounded-xl bg-acento-100 p-3">
-                            <div className="kicker mb-2">¿Por qué medio lo contactaste?</div>
+                            <div className="kicker mb-2">
+                              ¿Por qué medio lo contactaste?
+                              {onRegistrarAccion && !rapido && (
+                                <span className="ml-1 normal-case tracking-normal text-tinta/60">
+                                  · luego anotas el detalle
+                                </span>
+                              )}
+                            </div>
                             <div className="flex flex-wrap gap-2">
                               {MEDIOS.map((m) => (
                                 <button
                                   key={m}
-                                  onClick={() => confirmar(c, m)}
+                                  onClick={() => elegirMedio(c, m)}
                                   disabled={guardando === c.id}
                                   className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-mbc transition-colors hover:bg-acento hover:text-white disabled:opacity-50"
                                 >
@@ -540,10 +559,10 @@ export default function AgendaView({
                               </Link>
                               {onRegistrarAccion && (
                                 <button
-                                  onClick={() => onRegistrarAccion(c)}
+                                  onClick={() => setRapido((r) => !r)}
                                   className="text-[11px] font-semibold text-tinta/70 hover:underline"
                                 >
-                                  Registrar con detalle
+                                  {rapido ? 'Prefiero anotar el detalle' : 'Solo marcar, sin detalle'}
                                 </button>
                               )}
                             </div>

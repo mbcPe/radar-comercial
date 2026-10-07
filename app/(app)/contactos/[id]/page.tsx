@@ -4,8 +4,10 @@ import { useEffect, useState, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
 import ModalPausar from '@/components/ModalPausar';
-import ModalRegistrarAccion from '@/components/ModalRegistrarAccion';
+import ModalRegistrarAccion, { type ActividadEditable } from '@/components/ModalRegistrarAccion';
 import ModalProyecto from '@/components/ModalProyecto';
+import ModalEditarContacto from '@/components/ModalEditarContacto';
+import { diasHasta, formatearCumple, formatearFecha, leerFecha } from '@/lib/cartera';
 import { MODO_DEMO } from '@/lib/modoDemo';
 import { ACTIVIDADES, CONTACTOS, MANAGERS, MANAGERS_LISTA, PROYECTOS } from '@/lib/demoData';
 import { USUARIO_DEMO } from '@/lib/demoData';
@@ -28,6 +30,8 @@ type Contacto = {
   oportunidad: string | null;
   notas: string | null;
   manager_id: string;
+  archivado?: boolean | null;
+  archivado_en?: string | null;
 };
 
 type Manager = {
@@ -43,6 +47,8 @@ type Actividad = {
   proximos_pasos: string | null;
   fecha: string;
   autor_id: string;
+  pasos_hecho?: boolean | null;
+  editado_en?: string | null;
 };
 
 type Proyecto = {
@@ -62,13 +68,16 @@ function calcularSalud(c: Contacto) {
       text: '#0A6C7E',
     };
   }
-  if (!c.next_touch) {
-    return { titulo: 'Sin fecha de próximo contacto', bg: '#F3F6FA', border: '#D6DEE8', text: '#2B3440' };
+  const dias = diasHasta(c.next_touch);
+  if (dias === null) {
+    // Sin fecha (o con una que no se entiende): pide corregirla
+    return {
+      titulo: c.next_touch ? 'La fecha de próximo contacto no es válida' : 'Sin fecha de próximo contacto',
+      bg: '#FBEBEB',
+      border: '#F2B8B8',
+      text: '#A62222',
+    };
   }
-  const hoy = new Date();
-  hoy.setHours(0, 0, 0, 0);
-  const next = new Date(c.next_touch);
-  const dias = Math.round((next.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24));
 
   if (dias < -7) {
     return { titulo: `Rezagado hace ${Math.abs(dias)} días`, bg: '#EAF2FE', border: '#FF8CB0', text: '#A62222' };
@@ -77,11 +86,6 @@ function calcularSalud(c: Contacto) {
     return { titulo: `Próximo contacto en ${dias} días`, bg: '#FDF0E1', border: '#FAC775', text: '#9A5400' };
   }
   return { titulo: 'Al día', bg: '#E7F6EE', border: '#9BDCA6', text: '#1E6B3C' };
-}
-
-function formatearFecha(fecha: string | null): string {
-  if (!fecha) return '—';
-  return new Date(fecha).toLocaleDateString('es', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
 function formatearMonto(n: number | null): string {
@@ -103,7 +107,10 @@ export default function FichaContactoPage({ params }: { params: Promise<{ id: st
   const [modalPausarAbierto, setModalPausarAbierto] = useState(false);
   const [modalAccionAbierto, setModalAccionAbierto] = useState(false);
   const [modalProyectoAbierto, setModalProyectoAbierto] = useState(false);
-const [usuarioActual, setUsuarioActual] = useState<{ id: string; nombre: string } | null>(null);
+  const [modalEditarAbierto, setModalEditarAbierto] = useState(false);
+  const [actividadEditada, setActividadEditada] = useState<ActividadEditable | null>(null);
+  const [errorAccion, setErrorAccion] = useState<string | null>(null);
+  const [usuarioActual, setUsuarioActual] = useState<{ id: string; nombre: string; es_admin?: boolean } | null>(null);
 
   useEffect(() => {
     async function loadData() {
@@ -146,7 +153,7 @@ const [usuarioActual, setUsuarioActual] = useState<{ id: string; nombre: string 
       }
       const { data: usuarioData } = await supabase
         .from('managers')
-        .select('id, nombre')
+        .select('id, nombre, es_admin')
         .eq('email', authUser.email)
         .single();
       if (usuarioData) setUsuarioActual(usuarioData);
@@ -256,6 +263,42 @@ const [usuarioActual, setUsuarioActual] = useState<{ id: string; nombre: string 
     await recargarContacto();
   }
 
+  /** Archivar en vez de borrar: sale de listas y agenda pero conserva su historial. */
+  async function cambiarArchivado(archivar: boolean) {
+    if (!contacto) return;
+    const pregunta = archivar
+      ? `¿Archivar a ${contacto.nombre}? Dejará de aparecer en la agenda y en las listas. Su historial se conserva y puedes restaurarlo cuando quieras.`
+      : `¿Restaurar a ${contacto.nombre}? Vuelve a la agenda con su fecha de próximo contacto.`;
+    if (!confirm(pregunta)) return;
+    setErrorAccion(null);
+    const { error } = await supabase
+      .from('contactos')
+      .update({ archivado: archivar, archivado_en: archivar ? new Date().toISOString() : null })
+      .eq('id', contacto.id);
+    if (error) {
+      setErrorAccion(`No se pudo ${archivar ? 'archivar' : 'restaurar'}: ${error.message}`);
+      return;
+    }
+    await recargarContacto();
+  }
+
+  /** Marca o desmarca los próximos pasos de una acción como hechos. */
+  async function marcarPasos(a: Actividad, hecho: boolean) {
+    setErrorAccion(null);
+    setActividades((prev) => prev.map((x) => (x.id === a.id ? { ...x, pasos_hecho: hecho } : x)));
+    const { error } = await supabase
+      .from('actividades')
+      .update({ pasos_hecho: hecho, pasos_hecho_en: hecho ? new Date().toISOString() : null })
+      .eq('id', a.id);
+    if (error) {
+      setActividades((prev) => prev.map((x) => (x.id === a.id ? { ...x, pasos_hecho: !hecho } : x)));
+      setErrorAccion(`No se pudo actualizar los próximos pasos: ${error.message}`);
+    }
+  }
+
+  const puedeEditar = (a: Actividad) =>
+    Boolean(usuarioActual && (usuarioActual.id === a.autor_id || usuarioActual.es_admin));
+
   function copiarAlPortapapeles(texto: string, tipo: string) {
     navigator.clipboard.writeText(texto);
     setCopiado(tipo);
@@ -306,6 +349,28 @@ const [usuarioActual, setUsuarioActual] = useState<{ id: string; nombre: string 
           {contacto.empresa}
         </p>
 
+        {contacto.archivado && (
+          <div className="rounded-md p-3 mb-6 text-sm flex flex-wrap items-center justify-between gap-2" style={{ backgroundColor: '#F3F6FA', border: '1px solid #D6DEE8', color: '#2B3440' }}>
+            <span>
+              <strong>Contacto archivado</strong>
+              {contacto.archivado_en && <> el {formatearFecha(contacto.archivado_en)}</>}. No aparece en la agenda ni en las listas.
+            </span>
+            <button
+              onClick={() => cambiarArchivado(false)}
+              className="px-3 py-1.5 text-xs font-medium text-white rounded-md"
+              style={{ backgroundColor: '#2E9E5B' }}
+            >
+              Restaurar
+            </button>
+          </div>
+        )}
+
+        {errorAccion && (
+          <div className="rounded-md p-3 mb-6 text-sm" style={{ backgroundColor: '#FBEBEB', color: '#A62222' }} role="alert">
+            {errorAccion}
+          </div>
+        )}
+
         {/* Banner de oportunidad */}
         {contacto.oportunidad && (
           <div className="rounded-md p-3 mb-6 text-sm" style={{ backgroundColor: '#E7F6EE', border: '1px solid #2E9E5B', color: '#1E6B3C' }}>
@@ -329,7 +394,7 @@ const [usuarioActual, setUsuarioActual] = useState<{ id: string; nombre: string 
                 <div className="flex justify-between"><span className="text-tinta">Empresa</span><span className="font-medium text-mbc">{contacto.empresa}</span></div>
                 {contacto.area && <div className="flex justify-between"><span className="text-tinta">Área</span><span className="font-medium text-mbc">{contacto.area}</span></div>}
                 {contacto.cargo && <div className="flex justify-between"><span className="text-tinta">Cargo</span><span className="font-medium text-mbc">{contacto.cargo}</span></div>}
-                {contacto.cumple && <div className="flex justify-between"><span className="text-tinta">Cumpleaños</span><span className="font-medium text-mbc">{formatearFecha(contacto.cumple)}</span></div>}
+                {contacto.cumple && <div className="flex justify-between"><span className="text-tinta">Cumpleaños</span><span className="font-medium text-mbc">{formatearCumple(contacto.cumple)}</span></div>}
                 {owner && <div className="flex justify-between"><span className="text-tinta">Manager owner</span><span className="font-medium text-mbc">{owner.nombre}</span></div>}
                 {proyectos.length > 0 && (
                   <div className="flex justify-between">
@@ -394,7 +459,7 @@ const [usuarioActual, setUsuarioActual] = useState<{ id: string; nombre: string 
               <div className="text-sm font-medium mb-1" style={{ color: salud.text }}>{salud.titulo}</div>
               <div className="text-xs" style={{ color: salud.text }}>
                 Último contacto: {formatearFecha(contacto.last_touch)}<br />
-                Próximo: {formatearFecha(contacto.next_touch)}
+                Próximo: {leerFecha(contacto.next_touch) ? formatearFecha(contacto.next_touch) : (contacto.next_touch ? `"${contacto.next_touch}" (corrígela en Editar datos)` : '—')}
               </div>
             </div>
 
@@ -414,6 +479,12 @@ const [usuarioActual, setUsuarioActual] = useState<{ id: string; nombre: string 
               >
                 + Proyecto ganado
               </button>
+              <button
+                onClick={() => setModalEditarAbierto(true)}
+                className="px-3 py-2 text-sm font-medium text-tinta border border-ceramica-300 rounded-md hover:bg-ceramica"
+              >
+                Editar datos
+              </button>
               {contacto.estado === 'pausa' ? (
                 <button
                   onClick={reactivarContacto}
@@ -428,6 +499,15 @@ const [usuarioActual, setUsuarioActual] = useState<{ id: string; nombre: string 
                   className="px-3 py-2 text-sm font-medium text-tinta border border-ceramica-300 rounded-md hover:bg-ceramica"
                 >
                   Pausar
+                </button>
+              )}
+              {!contacto.archivado && (
+                <button
+                  onClick={() => cambiarArchivado(true)}
+                  className="px-3 py-2 text-sm font-medium border rounded-md hover:bg-ceramica"
+                  style={{ color: '#A62222', borderColor: '#F2B8B8' }}
+                >
+                  Archivar
                 </button>
               )}
             </div>
@@ -473,11 +553,44 @@ const [usuarioActual, setUsuarioActual] = useState<{ id: string; nombre: string 
                           <span className="text-xs px-2 py-0.5 rounded font-medium" style={{ backgroundColor: '#E2F4F8', color: '#0A6C7E' }}>{a.tipo}</span>
                         </div>
                         <div className="text-xs text-tinta">{a.resultado}</div>
-                        <div className="text-xs text-arena italic mt-1">— {autores[a.autor_id] || 'Sin autor'}</div>
+                        <div className="text-xs text-arena italic mt-1">
+                          — {autores[a.autor_id] || 'Sin autor'}
+                          {a.editado_en && <span className="not-italic"> · editada</span>}
+                        </div>
+                        {puedeEditar(a) && (
+                          <button
+                            onClick={() =>
+                              setActividadEditada({
+                                id: a.id,
+                                tipo: a.tipo,
+                                fecha: a.fecha,
+                                resultado: a.resultado,
+                                proximos_pasos: a.proximos_pasos,
+                                pasos_hecho: a.pasos_hecho,
+                              })
+                            }
+                            className="mt-1 text-xs font-medium text-acento hover:underline"
+                          >
+                            Editar
+                          </button>
+                        )}
                       </div>
                       <div>
                         <div className="text-xs text-arena">Próximos pasos</div>
-                        <div className="text-xs text-tinta">{a.proximos_pasos || '—'}</div>
+                        {a.proximos_pasos ? (
+                          <label className="mt-0.5 flex cursor-pointer items-start gap-2 text-xs text-tinta">
+                            <input
+                              type="checkbox"
+                              checked={Boolean(a.pasos_hecho)}
+                              onChange={(e) => marcarPasos(a, e.target.checked)}
+                              className="mt-0.5 h-4 w-4 shrink-0"
+                              aria-label="Próximos pasos hechos"
+                            />
+                            <span className={a.pasos_hecho ? 'line-through text-arena' : ''}>{a.proximos_pasos}</span>
+                          </label>
+                        ) : (
+                          <div className="text-xs text-tinta">—</div>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -508,7 +621,31 @@ const [usuarioActual, setUsuarioActual] = useState<{ id: string; nombre: string 
         autorNombre={usuarioActual.nombre}
         onClose={() => setModalAccionAbierto(false)}
         onSaved={recargarContacto}
+        onEditarContacto={() => setModalEditarAbierto(true)}
       />
+      )}
+      {actividadEditada && contacto && usuarioActual && (
+        <ModalRegistrarAccion
+          contactoId={contacto.id}
+          contactoNombre={contacto.nombre}
+          contactoCargo={contacto.cargo}
+          contactoEmpresa={contacto.empresa}
+          contactoPrioridad={contacto.prioridad}
+          contactoOportunidad={contacto.oportunidad}
+          autorId={usuarioActual.id}
+          autorNombre={usuarioActual.nombre}
+          actividad={actividadEditada}
+          onClose={() => setActividadEditada(null)}
+          onSaved={recargarContacto}
+        />
+      )}
+      {modalEditarAbierto && contacto && (
+        <ModalEditarContacto
+          isOpen
+          contacto={{ id: contacto.id }}
+          onClose={() => setModalEditarAbierto(false)}
+          onSuccess={recargarContacto}
+        />
       )}
       {modalProyectoAbierto && contacto && usuarioActual && (
       <ModalProyecto

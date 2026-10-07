@@ -6,6 +6,8 @@ import { createClient } from '@/lib/supabase';
 import { useScope } from '@/lib/viewScope';
 import { MODO_DEMO } from '@/lib/modoDemo';
 import { ACTIVIDADES, CONTACTOS, MANAGERS_LISTA, USUARIO_DEMO } from '@/lib/demoData';
+import ModalRegistrarAccion, { TIPOS_ACCION, type ActividadEditable } from '@/components/ModalRegistrarAccion';
+import { formatearFecha, leerFecha } from '@/lib/cartera';
 
 type Actividad = {
   id: string;
@@ -15,6 +17,8 @@ type Actividad = {
   proximos_pasos: string | null;
   fecha: string;
   autor_id: string;
+  pasos_hecho?: boolean | null;
+  editado_en?: string | null;
 };
 
 type Contacto = {
@@ -22,6 +26,9 @@ type Contacto = {
   nombre: string;
   empresa: string;
   manager_id: string;
+  cargo?: string | null;
+  prioridad?: string;
+  oportunidad?: string | null;
 };
 
 type Manager = {
@@ -30,23 +37,12 @@ type Manager = {
   iniciales: string;
 };
 
-const TIPOS_ACCION = [
-  'Llamada',
-  'Reunión presencial',
-  'Reunión virtual',
-  'Email',
-  'WhatsApp',
-  'Mensaje LinkedIn',
-];
-
-function formatearFechaCorta(fecha: string): string {
-  return new Date(fecha).toLocaleDateString('es', { day: '2-digit', month: 'short', year: 'numeric' });
-}
+const formatearFechaCorta = (fecha: string) => formatearFecha(fecha);
 
 function diasDesde(fecha: string): number {
   const hoy = new Date();
   hoy.setHours(0, 0, 0, 0);
-  const f = new Date(fecha);
+  const f = leerFecha(fecha) ?? hoy;
   return Math.round((hoy.getTime() - f.getTime()) / (1000 * 60 * 60 * 24));
 }
 
@@ -73,6 +69,12 @@ export default function ActividadesPage() {
   // Filtros
   const [filtroTipo, setFiltroTipo] = useState<string>('todos');
   const [filtroAutor, setFiltroAutor] = useState<string>('todos');
+  /** Próximos pasos: todos, solo los pendientes o solo los ya hechos. */
+  const [filtroPasos, setFiltroPasos] = useState<'todos' | 'pendientes' | 'hechos'>('todos');
+  const [esAdmin, setEsAdmin] = useState(false);
+  const [editando, setEditando] = useState<ActividadEditable | null>(null);
+  const [errorAccion, setErrorAccion] = useState<string | null>(null);
+  const [recarga, setRecarga] = useState(0);
 
   useEffect(() => {
     async function loadData() {
@@ -105,7 +107,7 @@ export default function ActividadesPage() {
 
       const { data: meData } = await supabase
         .from('managers')
-        .select('id')
+        .select('id, es_admin')
         .eq('email', authUser.email)
         .single();
 
@@ -114,11 +116,13 @@ export default function ActividadesPage() {
         return;
       }
       setManagerId(meData.id);
+      setEsAdmin(Boolean(meData.es_admin));
 
       // Cargar contactos del usuario logueado
       let queryContactos = supabase
       .from('contactos')
-      .select('id, nombre, empresa, manager_id');
+      .select('id, nombre, empresa, manager_id, cargo, prioridad, oportunidad')
+      .neq('archivado', true);
     
       if (scope === 'propia') {
         queryContactos = queryContactos.eq('manager_id', meData.id);
@@ -163,7 +167,7 @@ export default function ActividadesPage() {
       setLoading(false);
     }
     loadData();
-  }, [supabase, scope]);
+  }, [supabase, scope, recarga]);
 
   if (loading) {
     return <div className="p-6 text-tinta text-sm">Cargando actividades...</div>;
@@ -173,8 +177,30 @@ export default function ActividadesPage() {
   const filtradas = actividades.filter(a => {
     if (filtroTipo !== 'todos' && a.tipo !== filtroTipo) return false;
     if (filtroAutor !== 'todos' && a.autor_id !== filtroAutor) return false;
+    if (filtroPasos !== 'todos') {
+      if (!a.proximos_pasos?.trim()) return false;
+      if (filtroPasos === 'pendientes' && a.pasos_hecho) return false;
+      if (filtroPasos === 'hechos' && !a.pasos_hecho) return false;
+    }
     return true;
   });
+  const pasosPendientes = actividades.filter((a) => a.proximos_pasos?.trim() && !a.pasos_hecho).length;
+
+  /** Marca o desmarca los próximos pasos como hechos, con respuesta inmediata. */
+  async function marcarPasos(a: Actividad, hecho: boolean) {
+    setErrorAccion(null);
+    setActividades((prev) => prev.map((x) => (x.id === a.id ? { ...x, pasos_hecho: hecho } : x)));
+    const { error } = await supabase
+      .from('actividades')
+      .update({ pasos_hecho: hecho, pasos_hecho_en: hecho ? new Date().toISOString() : null })
+      .eq('id', a.id);
+    if (error) {
+      setActividades((prev) => prev.map((x) => (x.id === a.id ? { ...x, pasos_hecho: !hecho } : x)));
+      setErrorAccion(`No se pudo actualizar los próximos pasos: ${error.message}`);
+    }
+  }
+
+  const puedeEditar = (a: Actividad) => a.autor_id === managerId || esAdmin;
 
   // Métricas
   const hoy = new Date();
@@ -197,12 +223,13 @@ export default function ActividadesPage() {
   function limpiarFiltros() {
     setFiltroTipo('todos');
     setFiltroAutor('todos');
+    setFiltroPasos('todos');
   }
 
-  const hayFiltros = filtroTipo !== 'todos' || filtroAutor !== 'todos';
+  const hayFiltros = filtroTipo !== 'todos' || filtroAutor !== 'todos' || filtroPasos !== 'todos';
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       <h2 className="text-lg font-medium text-mbc mb-1">Actividades</h2>
       <p className="text-sm text-tinta mb-6">
         {scope === 'propia' ? 'Tu historial de interacciones' : 'Historial del equipo completo'}
@@ -256,6 +283,17 @@ export default function ActividadesPage() {
           </select>
         )}
 
+        <select
+          value={filtroPasos}
+          onChange={(e) => setFiltroPasos(e.target.value as typeof filtroPasos)}
+          className="px-3 py-1.5 border border-ceramica-300 rounded-md text-sm text-mbc bg-white cursor-pointer"
+          aria-label="Próximos pasos"
+        >
+          <option value="todos">Todos los próximos pasos</option>
+          <option value="pendientes">Próximos pasos pendientes ({pasosPendientes})</option>
+          <option value="hechos">Próximos pasos hechos</option>
+        </select>
+
         {hayFiltros && (
           <button
             onClick={limpiarFiltros}
@@ -269,6 +307,12 @@ export default function ActividadesPage() {
           {filtradas.length} de {actividades.length}
         </span>
       </div>
+
+      {errorAccion && (
+        <div className="rounded-md p-3 mb-4 text-sm" style={{ backgroundColor: '#FBEBEB', color: '#A62222' }} role="alert">
+          {errorAccion}
+        </div>
+      )}
 
       {/* Timeline */}
       {filtradas.length === 0 ? (
@@ -329,16 +373,46 @@ export default function ActividadesPage() {
                     )}
 
                     {a.proximos_pasos && (
-                      <div className="text-xs text-tinta mt-2 pl-3 border-l-2" style={{ borderColor: '#FDF0E1' }}>
-                        <span className="text-arena">Próximos pasos:</span> {a.proximos_pasos}
-                      </div>
+                      <label
+                        onClick={(e) => e.stopPropagation()}
+                        className="mt-2 flex cursor-pointer items-start gap-2 border-l-2 pl-3 text-xs text-tinta"
+                        style={{ borderColor: a.pasos_hecho ? '#9BDCA6' : '#FAC775' }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={Boolean(a.pasos_hecho)}
+                          onChange={(e) => marcarPasos(a, e.target.checked)}
+                          className="mt-0.5 h-4 w-4 shrink-0"
+                          aria-label="Próximos pasos hechos"
+                        />
+                        <span className={a.pasos_hecho ? 'line-through text-arena' : ''}>
+                          <span className="text-arena">Próximos pasos:</span> {a.proximos_pasos}
+                        </span>
+                      </label>
                     )}
 
-                    {autor && (
-                      <div className="text-xs text-arena italic mt-2">
-                        Registrado por {autor.nombre}
-                      </div>
-                    )}
+                    <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-arena">
+                      {autor && <span className="italic">Registrado por {autor.nombre}</span>}
+                      {a.editado_en && <span>· editada</span>}
+                      {c && puedeEditar(a) && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditando({
+                              id: a.id,
+                              tipo: a.tipo,
+                              fecha: a.fecha,
+                              resultado: a.resultado,
+                              proximos_pasos: a.proximos_pasos,
+                              pasos_hecho: a.pasos_hecho,
+                            });
+                          }}
+                          className="font-medium text-acento hover:underline"
+                        >
+                          Editar
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -346,6 +420,27 @@ export default function ActividadesPage() {
           })}
         </div>
       )}
+
+      {editando && managerId && (() => {
+        const act = actividades.find((x) => x.id === editando.id);
+        const c = act ? contactos[act.contacto_id] : undefined;
+        if (!c) return null;
+        return (
+          <ModalRegistrarAccion
+            contactoId={c.id}
+            contactoNombre={c.nombre}
+            contactoCargo={c.cargo ?? null}
+            contactoEmpresa={c.empresa}
+            contactoPrioridad={c.prioridad ?? 'P2'}
+            contactoOportunidad={c.oportunidad ?? null}
+            autorId={managerId}
+            autorNombre=""
+            actividad={editando}
+            onClose={() => setEditando(null)}
+            onSaved={() => setRecarga((n) => n + 1)}
+          />
+        );
+      })()}
     </div>
   );
 }

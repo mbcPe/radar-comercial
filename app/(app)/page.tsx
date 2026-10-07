@@ -8,11 +8,10 @@ import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase';
 import { useScope } from '@/lib/viewScope';
 import ModalRegistrarAccion from '@/components/ModalRegistrarAccion';
+import ModalEditarContacto from '@/components/ModalEditarContacto';
+import { hoyISO, sugerirProximo, sumarDias } from '@/lib/cartera';
 import AgendaView from '@/components/agenda/AgendaView';
 import type { Contacto, Manager } from '@/components/dashboard/DashboardView';
-
-/** Cadencia de contacto por prioridad, igual que en ModalRegistrarAccion. */
-const DIAS_POR_PRIORIDAD: Record<string, number> = { P1: 30, P2: 60, P3: 75 };
 
 export default function AgendaPage() {
   const supabase = createClient();
@@ -23,14 +22,17 @@ export default function AgendaPage() {
   const [managers, setManagers] = useState<Record<string, Manager>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [seleccionado, setSeleccionado] = useState<Contacto | null>(null);
+  const [seleccionado, setSeleccionado] = useState<{ c: Contacto; medio?: string } | null>(null);
+  /** Contacto cuyos datos se editan tras registrar la acción. */
+  const [editandoId, setEditandoId] = useState<string | null>(null);
 
   async function cargarContactos(mgrId: string | null, alcance: string) {
     let q = supabase
       .from('contactos')
       .select(
         'id, nombre, empresa, cargo, prioridad, next_touch, estado, pausa_hasta, oportunidad, manager_id, pais, cumple'
-      );
+      )
+      .neq('archivado', true);
     if (alcance === 'propia' && mgrId) q = q.eq('manager_id', mgrId);
 
     const { data, error: err } = await q;
@@ -76,15 +78,14 @@ export default function AgendaPage() {
   async function marcarContactado(c: Contacto, medio: string) {
     if (!managerId) return;
 
-    const hoyISO = new Date().toISOString().slice(0, 10);
-    const dias = DIAS_POR_PRIORIDAD[c.prioridad] ?? 60;
-    const proximo = new Date(Date.now() + dias * 86400000).toISOString().slice(0, 10);
+    const hoy = hoyISO();
+    const proximo = sugerirProximo(c.prioridad, hoy);
 
     const { error: errAct } = await supabase.from('actividades').insert({
       contacto_id: c.id,
       autor_id: managerId,
       tipo: medio,
-      fecha: hoyISO,
+      fecha: hoy,
       resultado: `Contacto registrado desde la agenda (${medio})`,
     });
     if (errAct) {
@@ -94,7 +95,7 @@ export default function AgendaPage() {
 
     const { error: errCon } = await supabase
       .from('contactos')
-      .update({ last_touch: hoyISO, next_touch: proximo })
+      .update({ last_touch: hoy, next_touch: proximo })
       .eq('id', c.id);
     if (errCon) {
       setError(
@@ -108,7 +109,7 @@ export default function AgendaPage() {
 
   /** Mueve la fecha del próximo contacto sin registrar actividad. */
   async function posponer(c: Contacto, dias: number) {
-    const nueva = new Date(Date.now() + dias * 86400000).toISOString().slice(0, 10);
+    const nueva = sumarDias(dias);
     const { error: err } = await supabase
       .from('contactos')
       .update({ next_touch: nueva })
@@ -147,22 +148,33 @@ export default function AgendaPage() {
         contactos={contactos}
         managers={managers}
         onMarcarContactado={marcarContactado}
-        onRegistrarAccion={setSeleccionado}
+        onRegistrarAccion={(c, medio) => setSeleccionado({ c, medio })}
         onPosponer={posponer}
       />
 
       {seleccionado && managerId && (
         <ModalRegistrarAccion
-          contactoId={seleccionado.id}
-          contactoNombre={seleccionado.nombre}
-          contactoCargo={seleccionado.cargo || ''}
-          contactoEmpresa={seleccionado.empresa}
-          contactoPrioridad={seleccionado.prioridad}
-          contactoOportunidad={seleccionado.oportunidad || ''}
+          contactoId={seleccionado.c.id}
+          contactoNombre={seleccionado.c.nombre}
+          contactoCargo={seleccionado.c.cargo || ''}
+          contactoEmpresa={seleccionado.c.empresa}
+          contactoPrioridad={seleccionado.c.prioridad}
+          contactoOportunidad={seleccionado.c.oportunidad || ''}
           autorId={managerId}
           autorNombre=""
+          tipoInicial={seleccionado.medio}
           onClose={() => setSeleccionado(null)}
           onSaved={() => cargarContactos(managerId, scope)}
+          onEditarContacto={() => setEditandoId(seleccionado.c.id)}
+        />
+      )}
+
+      {editandoId && (
+        <ModalEditarContacto
+          isOpen
+          contacto={{ id: editandoId }}
+          onClose={() => setEditandoId(null)}
+          onSuccess={() => cargarContactos(managerId, scope)}
         />
       )}
     </>

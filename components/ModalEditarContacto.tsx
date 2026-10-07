@@ -3,6 +3,9 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase';
 import { explicarError } from '@/lib/lenguaje';
+import Ventana from '@/components/ui/Ventana';
+import CampoCumple, { cumpleIncompleto, cumpleParaGuardar } from '@/components/ui/CampoCumple';
+import { cadencia, esFechaLejana, leerFecha, PRIORIDADES, sugerirProximo } from '@/lib/cartera';
 
 interface ModalEditarContactoProps {
   isOpen: boolean;
@@ -34,9 +37,11 @@ export default function ModalEditarContacto({
     cumple: '',
     pais: '',
     prioridad: 'P2',
+    next_touch: '',
     oportunidad: '',
     notas: '',
   });
+  const [errorGuardar, setErrorGuardar] = useState<string | null>(null);
 
   // Cargar datos completos del contacto cuando se abre el modal
   useEffect(() => {
@@ -48,7 +53,7 @@ export default function ModalEditarContacto({
       
       const { data, error } = await supabase
         .from('contactos')
-        .select('nombre, empresa, area, cargo, email, telefono, cumple, pais, prioridad, oportunidad, notas')
+        .select('nombre, empresa, area, cargo, email, telefono, cumple, pais, prioridad, next_touch, oportunidad, notas')
         .eq('id', contacto.id)
         .single();
 
@@ -70,6 +75,8 @@ export default function ModalEditarContacto({
           cumple: data.cumple || '',
           pais: data.pais || '',
           prioridad: data.prioridad || 'P2',
+          // Una fecha no válida (p. ej. texto mal importado) se muestra vacía para obligar a corregirla
+          next_touch: leerFecha(data.next_touch) ? String(data.next_touch).slice(0, 10) : '',
           oportunidad: data.oportunidad || '',
           notas: data.notas || '',
         });
@@ -85,6 +92,11 @@ export default function ModalEditarContacto({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (cumpleIncompleto(form.cumple)) {
+      setErrorGuardar('El cumpleaños necesita día y mes (el año es opcional).');
+      return;
+    }
+    setErrorGuardar(null);
     setLoading(true);
 
     try {
@@ -97,9 +109,10 @@ export default function ModalEditarContacto({
           cargo: form.cargo || null,
           email: form.email || null,
           telefono: form.telefono || null,
-          cumple: form.cumple || null,
+          cumple: cumpleParaGuardar(form.cumple),
           pais: form.pais || null,
           prioridad: form.prioridad,
+          next_touch: form.next_touch,
           oportunidad: form.oportunidad || null,
           notas: form.notas || null,
         })
@@ -107,34 +120,24 @@ export default function ModalEditarContacto({
 
       if (error) throw error;
 
-      alert('Contacto actualizado correctamente');
       onSuccess();
       onClose();
-    } catch (error: any) {
-      console.error('Error al actualizar contacto:', error);
-      alert('Error al actualizar el contacto: ' + error.message);
+    } catch (error) {
+      const legible = explicarError(error as { message?: string }, 'actualizar el contacto');
+      setErrorGuardar(`${legible.titulo} ${legible.sugerencia}`);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-white border-b border-ceramica-300 px-6 py-4 flex justify-between items-center">
-          <h2 className="text-xl font-semibold text-mbc">Editar contacto</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-arena text-2xl leading-none"
-          >
-            ×
-          </button>
-        </div>
-
+    <Ventana titulo="Editar contacto" onClose={onClose}>
         {cargando ? (
           <div className="p-6 text-center text-tinta">Cargando datos...</div>
+        ) : errorCarga ? (
+          <div className="p-6 text-sm" style={{ color: '#A62222' }} role="alert">{errorCarga}</div>
         ) : (
-          <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4">
             {/* Fila 1: Nombre */}
             <div>
               <label className="block text-sm font-medium text-tinta mb-1">
@@ -150,7 +153,7 @@ export default function ModalEditarContacto({
             </div>
 
             {/* Fila 2: Empresa y País */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-tinta mb-1">
                   Empresa *
@@ -202,7 +205,7 @@ export default function ModalEditarContacto({
             </div>
 
             {/* Fila 3: Área y Cargo */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-tinta mb-1">
                   Área
@@ -229,7 +232,7 @@ export default function ModalEditarContacto({
             </div>
 
             {/* Fila 4: Email y Teléfono */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-tinta mb-1">
                   Email
@@ -260,14 +263,9 @@ export default function ModalEditarContacto({
               <label className="block text-sm font-medium text-tinta mb-1">
                 Cumpleaños
               </label>
-              <input
-                type="date"
-                value={form.cumple}
-                onChange={(e) => setForm({ ...form, cumple: e.target.value })}
-                className="w-full px-3 py-2 border border-ceramica-300 rounded-md text-mbc focus:ring-2 focus:ring-[#0A3A6B] focus:border-transparent"
-              />
+              <CampoCumple valor={form.cumple} onChange={(v) => setForm({ ...form, cumple: v })} />
               <p className="mt-1 text-xs text-arena">
-                Aparece en el radar cuando falten 30 días o menos.
+                El año es opcional. Aparece en el radar cuando falten 30 días o menos.
               </p>
             </div>
 
@@ -282,10 +280,38 @@ export default function ModalEditarContacto({
                 onChange={(e) => setForm({ ...form, prioridad: e.target.value })}
                 className="w-full px-3 py-2 border border-ceramica-300 rounded-md text-mbc focus:ring-2 focus:ring-[#0A3A6B] focus:border-transparent"
               >
-                <option value="P1">P1 · Contacto cada 30 días</option>
-                <option value="P2">P2 · Contacto cada 60 días</option>
-                <option value="P3">P3 · Contacto cada 75 días</option>
+                {PRIORIDADES.map((p) => (
+                  <option key={p.value} value={p.value}>{p.label}</option>
+                ))}
               </select>
+            </div>
+
+            {/* Próximo contacto: obligatorio, todo contacto debe tener fecha válida */}
+            <div>
+              <label className="block text-sm font-medium text-tinta mb-1">
+                Próximo contacto *
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="date"
+                  required
+                  value={form.next_touch}
+                  onChange={(e) => setForm({ ...form, next_touch: e.target.value })}
+                  className="min-w-0 flex-1 px-3 py-2 border border-ceramica-300 rounded-md text-mbc focus:ring-2 focus:ring-[#0A3A6B] focus:border-transparent"
+                />
+                <button
+                  type="button"
+                  onClick={() => setForm({ ...form, next_touch: sugerirProximo(form.prioridad) })}
+                  className="shrink-0 px-3 py-2 text-xs font-medium text-tinta border border-ceramica-300 rounded-md hover:bg-ceramica"
+                >
+                  Según {form.prioridad} ({cadencia(form.prioridad)} d)
+                </button>
+              </div>
+              {esFechaLejana(form.next_touch, form.prioridad) && (
+                <p className="text-xs mt-1" style={{ color: '#9A5400' }}>
+                  ⚠ Queda a más del doble de la cadencia de {form.prioridad}. Revisa que sea la fecha correcta.
+                </p>
+              )}
             </div>
 
             {/* Fila 6: Oportunidad */}
@@ -314,6 +340,12 @@ export default function ModalEditarContacto({
               />
             </div>
 
+            {errorGuardar && (
+              <div className="rounded-md p-3 text-sm" style={{ backgroundColor: '#FBEBEB', color: '#A62222' }} role="alert">
+                {errorGuardar}
+              </div>
+            )}
+
             {/* Botones */}
             <div className="flex justify-end gap-3 pt-4 border-t border-ceramica-300">
               <button
@@ -334,7 +366,6 @@ export default function ModalEditarContacto({
             </div>
           </form>
         )}
-      </div>
-    </div>
+    </Ventana>
   );
 }

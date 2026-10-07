@@ -15,7 +15,11 @@ import {
 
 type Cuerpo = Peticion & { unico?: 'siempre' | 'quizas' | null };
 
-const BOOLEANOS: Record<string, string[]> = { managers: ['activo', 'es_admin'] };
+const BOOLEANOS: Record<string, string[]> = {
+  managers: ['activo', 'es_admin'],
+  contactos: ['archivado'],
+  actividades: ['pasos_hecho'],
+};
 
 /** D1 devuelve 1/0; la app espera true/false como en Postgres. */
 function normalizar(tabla: string, filas: Record<string, unknown>[]) {

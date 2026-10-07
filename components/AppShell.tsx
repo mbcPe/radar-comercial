@@ -5,6 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
 import { useScope } from '@/lib/viewScope';
 import { cx, LogoMBC } from '@/components/ui/kit';
+import { diasHasta } from '@/lib/cartera';
 import { MODO_DEMO } from '@/lib/modoDemo';
 import { CONTACTOS, USUARIO_DEMO } from '@/lib/demoData';
 
@@ -175,17 +176,22 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
       setUser(managerData);
 
-      // Alerta de cadencia: lo vencido más lo que vence hasta el domingo
+      // Alerta de cadencia: lo vencido, lo que vence hasta el domingo y lo que no tiene
+      // fecha válida (igual que la agenda de la portada). Los archivados no cuentan.
       const hoy = new Date();
-      const finSemana = new Date(hoy);
-      finSemana.setDate(hoy.getDate() + (7 - (hoy.getDay() === 0 ? 7 : hoy.getDay())));
-      const { count } = await supabase
+      const hastaDomingo = 7 - (hoy.getDay() === 0 ? 7 : hoy.getDay());
+      const { data: propios } = await supabase
         .from('contactos')
-        .select('id', { count: 'exact', head: true })
+        .select('next_touch')
         .eq('manager_id', managerData.id)
         .neq('estado', 'pausa')
-        .lte('next_touch', finSemana.toISOString().slice(0, 10));
-      setPendientes(count ?? 0);
+        .neq('archivado', true);
+      setPendientes(
+        (propios ?? []).filter((c) => {
+          const d = diasHasta(c.next_touch);
+          return d === null || d <= hastaDomingo;
+        }).length
+      );
 
       setLoading(false);
     }
