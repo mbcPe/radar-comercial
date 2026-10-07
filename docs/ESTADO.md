@@ -288,4 +288,14 @@ Piezas nuevas: `lib/cartera.ts` (fechas locales, cadencia, cumple sin año), `co
 (marco de modales: sin cierre por clic de fondo, pantalla completa en móvil), `components/ui/CampoCumple.tsx`,
 `migrations/0002_feedback_usuarios.sql`. Causa raíz del #10: la plantilla de importación decía
 "DEJAR EN BLANCO" en next_touch y el import guardaba texto crudo como fecha.
-Pendiente: verificación en local con D1 (`npm run db:local` + `dev:d1`), migración remota y deploy.
+Verificado 2026-10-06 en local con D1 y datos sintéticos (`.wrangler/seed_prueba.sql`): los 10 puntos
+probados en navegador (agenda con sin-fecha, medio→detalle, fondo no cierra, cambio de prioridad +
+editar contacto, cumple con/sin año, editar acción, check de pasos, filtro pendientes, revisar fechas,
+archivar/restaurar), 9 rutas sin desborde a 375px, 16 pruebas de `lib/cartera.ts` en verde
+(`node --experimental-strip-types .wrangler/prueba_cartera.mts`), `cf:build` OK.
+Publicado: migración 0002 aplicada en D1 remota, deploy versión 80056fc2 en comercial.mbc-latam.com,
+push de `cloudflare-d1` a origin (297d87b).
+**Sigue bloqueado por Cloudflare Access** (ACCESS_TEAM_DOMAIN / ACCESS_AUD vacíos): nadie puede entrar
+hasta que Nelson cree la app en Zero Trust. Los usuarios que dieron el feedback usan hoy la versión
+Vercel/Supabase (`main`), que NO tiene estos cambios.
+Pendiente: #4 correo semanal (proveedor de correo + Cron Trigger), Access, y decidir si portar a `main`.
